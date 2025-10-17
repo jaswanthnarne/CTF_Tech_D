@@ -26,13 +26,13 @@ const CTFs = () => {
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
-  const [currentTime, setCurrentTime] = useState(new Date()); // For real-time updates
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   // Update current time every minute for real-time status changes
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
-    }, 60000); // Update every minute
+    }, 60000);
 
     return () => clearInterval(timer);
   }, []);
@@ -49,13 +49,16 @@ const CTFs = () => {
       if (search) params.search = search;
       if (category !== 'all') params.category = category;
 
+      console.log('📡 Fetching CTFs with params:', params);
+      
+      // Use the correct endpoint
       const response = await userCTFAPI.getAllCTFs(params);
-      console.log('Fetched CTFs with links:', response.data.ctfs);
-      setCtfs(response.data.ctfs);
+      console.log('✅ Fetched CTFs:', response.data.ctfs);
+      setCtfs(response.data.ctfs || []);
 
       // Fetch joined status for each CTF
       const joined = new Set();
-      for (const ctf of response.data.ctfs) {
+      for (const ctf of response.data.ctfs || []) {
         try {
           const joinedResponse = await userCTFAPI.checkJoined(ctf._id);
           if (joinedResponse.data.joined) {
@@ -67,7 +70,7 @@ const CTFs = () => {
       }
       setJoinedCTFs(joined);
     } catch (error) {
-      console.error('Failed to fetch CTFs:', error);
+      console.error('❌ Failed to fetch CTFs:', error);
       toast.error('Failed to load CTFs');
     } finally {
       setLoading(false);
@@ -79,8 +82,9 @@ const CTFs = () => {
       await userCTFAPI.joinCTF(ctfId);
       setJoinedCTFs(prev => new Set([...prev, ctfId]));
       toast.success('Successfully joined CTF!');
-      fetchCTFs();
+      fetchCTFs(); // Refresh the list
     } catch (error) {
+      console.error('❌ Join CTF error:', error);
       toast.error(error.response?.data?.error || 'Failed to join CTF');
     }
   };
@@ -99,51 +103,80 @@ const CTFs = () => {
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
-  // Check if current time is within active hours for today
- // In CTFs.jsx - Replace the status calculation functions
-const isWithinActiveHours = (ctf) => {
-  if (!ctf.activeHours || !ctf.activeHours.startTime || !ctf.activeHours.endTime) {
-    return true; // If no active hours specified, consider it always active
-  }
+  // Enhanced status calculation that matches backend logic
+  const calculateCurrentStatus = (ctf) => {
+    if (!ctf) return { status: 'inactive', isCurrentlyActive: false };
 
-  const now = currentTime;
-  
-  // Convert times to minutes since midnight for comparison
-  const timeToMinutes = (timeStr) => {
-    const [hours, minutes] = timeStr.split(':').map(Number);
-    return hours * 60 + minutes;
+    console.log('🔍 Calculating status for CTF:', {
+      title: ctf.title,
+      backendStatus: ctf.status,
+      isVisible: ctf.isVisible,
+      isPublished: ctf.isPublished,
+      activeHours: ctf.activeHours
+    });
+
+    // Use backend status as primary source
+    const backendStatus = ctf.status?.toLowerCase();
+    
+    // If backend says it's active, check if within active hours
+    if (backendStatus === 'active') {
+      const isCurrentlyActive = isWithinActiveHours(ctf);
+      return { 
+        status: isCurrentlyActive ? 'active' : 'inactive_hours', 
+        isCurrentlyActive 
+      };
+    }
+    
+    // For other statuses, trust the backend
+    return { 
+      status: backendStatus || 'inactive', 
+      isCurrentlyActive: false 
+    };
   };
 
-  const currentMinutes = timeToMinutes(now.toTimeString().slice(0, 8));
-  const startMinutes = timeToMinutes(ctf.activeHours.startTime);
-  const endMinutes = timeToMinutes(ctf.activeHours.endTime);
+  // Check if within active hours (24-hour format)
+  const isWithinActiveHours = (ctf) => {
+    if (!ctf.activeHours || !ctf.activeHours.startTime || !ctf.activeHours.endTime) {
+      return true; // If no active hours specified, consider it always active
+    }
 
-  return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
-};
+    const now = currentTime;
+    
+    // Convert times to minutes since midnight for comparison (24-hour format)
+    const timeToMinutes = (timeStr) => {
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      return hours * 60 + minutes;
+    };
 
-// Real-time status calculation
-// Status calculation based purely on active hours
-const calculateCurrentStatus = (ctf) => {
-  // If CTF is not visible or not published
-  if (!ctf.isVisible || !ctf.isPublished) {
-    return { status: 'inactive', isCurrentlyActive: false };
-  }
-  
-  // Check if within active hours
-  const withinActiveHours = isWithinActiveHours(ctf);
-  
-  if (withinActiveHours) {
-    return { status: 'active', isCurrentlyActive: true };
-  } else {
-    return { status: 'inactive', isCurrentlyActive: false };
-  }
-};
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const startMinutes = timeToMinutes(ctf.activeHours.startTime);
+    const endMinutes = timeToMinutes(ctf.activeHours.endTime);
+
+    console.log('🕒 Time check:', {
+      currentTime: `${now.getHours()}:${now.getMinutes()}`,
+      currentMinutes,
+      startTime: ctf.activeHours.startTime,
+      startMinutes,
+      endTime: ctf.activeHours.endTime,
+      endMinutes,
+      withinHours: currentMinutes >= startMinutes && currentMinutes <= endMinutes
+    });
+
+    return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+  };
 
   // Check if join button should be enabled
   const isJoinButtonEnabled = (ctf) => {
     const { status, isCurrentlyActive } = calculateCurrentStatus(ctf);
-    console.log(`CTF ${ctf._id} - Status: ${status}, Currently Active: ${isCurrentlyActive}, Joined: ${joinedCTFs.has(ctf._id)}`);
-    return status === 'active' && isCurrentlyActive && !joinedCTFs.has(ctf._id);
+    const canJoin = status === 'active' && isCurrentlyActive && !joinedCTFs.has(ctf._id);
+    
+    console.log(`🔐 CTF ${ctf._id} - Join enabled: ${canJoin}`, {
+      status,
+      isCurrentlyActive,
+      joined: joinedCTFs.has(ctf._id)
+    });
+    
+    return canJoin;
   };
 
   // Check if continue button should be shown
@@ -163,9 +196,14 @@ const calculateCurrentStatus = (ctf) => {
     
     const statusConfig = {
       active: { 
-        color: isCurrentlyActive ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800', 
-        label: isCurrentlyActive ? 'Active Now' : 'Inactive Hours',
-        description: isCurrentlyActive ? 'Ready to play!' : `Active ${ctf.activeHours.startTime}-${ctf.activeHours.endTime}`
+        color: 'bg-green-100 text-green-800', 
+        label: 'Active Now',
+        description: 'Ready to play!'
+      },
+      inactive_hours: { 
+        color: 'bg-yellow-100 text-yellow-800', 
+        label: 'Inactive Hours',
+        description: `Active ${ctf.activeHours.startTime}-${ctf.activeHours.endTime}`
       },
       upcoming: { 
         color: 'bg-blue-100 text-blue-800', 
@@ -225,8 +263,8 @@ const calculateCurrentStatus = (ctf) => {
     const { status } = calculateCurrentStatus(ctf);
     
     if (filter !== 'all' && status !== filter) return false;
-    if (search && !ctf.title.toLowerCase().includes(search.toLowerCase()) && 
-        !ctf.description.toLowerCase().includes(search.toLowerCase())) return false;
+    if (search && !ctf.title?.toLowerCase().includes(search.toLowerCase()) && 
+        !ctf.description?.toLowerCase().includes(search.toLowerCase())) return false;
     if (category !== 'all' && ctf.category !== category) return false;
     return true;
   });
@@ -293,6 +331,13 @@ const calculateCurrentStatus = (ctf) => {
         </div>
       </div>
 
+      {/* Debug Info */}
+      <div className="mb-4 p-3 bg-gray-100 rounded text-xs">
+        <strong>Debug Info:</strong> Loaded {ctfs.length} CTFs, Filtered: {filteredCTFs.length} | 
+        Current Time: {currentTime.toLocaleTimeString()} | 
+        API Endpoint: /user/ctfs/available
+      </div>
+
       {/* CTF Grid */}
       {loading ? (
         <div className="flex items-center justify-center h-64">
@@ -307,6 +352,14 @@ const calculateCurrentStatus = (ctf) => {
             const externalLinkEnabled = isExternalLinkEnabled(ctf);
             const showContinueButton = shouldShowContinueButton(ctf);
             
+            console.log(`🎯 CTF ${ctf.title}:`, {
+              status,
+              isCurrentlyActive,
+              joinEnabled,
+              externalLinkEnabled,
+              showContinueButton
+            });
+
             return (
               <Card key={ctf._id} className="hover:shadow-lg transition-all duration-200 hover:scale-105">
                 <Card.Content className="p-6">
@@ -342,9 +395,6 @@ const calculateCurrentStatus = (ctf) => {
                       <Clock className="h-4 w-4 mr-2 flex-shrink-0" />
                       <span className="truncate">
                         {ctf.activeHours.startTime} - {ctf.activeHours.endTime} ({ctf.activeHours.timezone})
-                        {ctf.activeHours.days && ctf.activeHours.days.length > 0 && (
-                          <span className="ml-1">({ctf.activeHours.days.join(', ')})</span>
-                        )}
                       </span>
                     </div>
                     <div className="flex items-center text-sm text-gray-500">
@@ -396,11 +446,7 @@ const calculateCurrentStatus = (ctf) => {
                           title={
                             joinEnabled 
                               ? 'Join CTF' 
-                              : status !== 'active' 
-                                ? `CTF is ${status}` 
-                                : !isCurrentlyActive 
-                                ? 'CTF is not currently active' 
-                                : 'Already joined'
+                              : `CTF is ${status}` + (status === 'active' ? ' but not in active hours' : '')
                           }
                           className="w-full"
                         >
