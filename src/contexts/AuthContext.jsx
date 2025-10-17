@@ -44,27 +44,47 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+// const studentLogin = async (credentials) => {
+//   try {
+//     const response = await authAPI.login(credentials);
+//     const { user, token } = response.data;
+    
+//     // Store student token as 'token' (not 'userToken')
+//     localStorage.setItem('token', token);
+//     localStorage.setItem('user', JSON.stringify(user));
+    
+//     setUser(user);
+//     setIsAuthenticated(true);
+//     setUserType('student');
+    
+//     return { success: true, user };
+//   } catch (error) {
+//     return { 
+//       success: false, 
+//       error: error.response?.data?.error || 'Login failed' 
+//     };
+//   }
+// };
+// In your AuthContext - update login functions
 const studentLogin = async (credentials) => {
   try {
     const response = await authAPI.login(credentials);
-    const { user, token } = response.data;
     
-    // Store student token as 'token' (not 'userToken')
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(user));
+    if (response.data.token) {
+      localStorage.setItem('token', response.data.token);
+      localStorage.setItem('user', JSON.stringify(response.data.user));
+    }
     
-    setUser(user);
-    setIsAuthenticated(true);
-    setUserType('student');
-    
-    return { success: true, user };
+    return { success: true, user: response.data.user };
   } catch (error) {
+    console.error('Student login error:', error);
     return { 
       success: false, 
       error: error.response?.data?.error || 'Login failed' 
     };
   }
 };
+
 
 const register = async (data) => {
   try {

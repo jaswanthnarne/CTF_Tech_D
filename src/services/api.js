@@ -18,7 +18,7 @@ api.interceptors.request.use(
         console.log('🔐 Using admin token for:', config.url);
       }
     } else {
-      // For student routes, use token
+      // For student routes, use studentToken
       const studentToken = localStorage.getItem('token');
       if (studentToken) {
         config.headers.Authorization = `Bearer ${studentToken}`;
