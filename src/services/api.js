@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // const API_BASE_URL = 'http://localhost:5000/api';
-const API_BASE_URL = 'https://ctf-tech-d-backend.vercel.app/';
+const API_BASE_URL = 'https://ctf-tech-d-backend.vercel.app/api';
 
 // Create axios instance
 const api = axios.create({
