@@ -16,12 +16,12 @@ const CTFForm = ({ ctf, onSubmit, onCancel, loading }) => {
     title: '',
     description: '',
     category: 'Web Security',
-    points: 100,
+    points: 10,
     difficulty: 'Easy',
     activeHours: {
       startTime: '09:00',
       endTime: '18:00',
-      timezone: 'UTC'
+      timezone: 'IST'
     },
     schedule: {
       startDate: '',
