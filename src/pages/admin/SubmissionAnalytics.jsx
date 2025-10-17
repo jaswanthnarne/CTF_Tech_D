@@ -58,31 +58,100 @@ const SubmissionAnalytics = () => {
       setRefreshing(true);
       console.log('🔄 Fetching submission analytics...');
       
-      // Use the working submissions stats endpoint
-      const [statsResponse, submissionsResponse] = await Promise.all([
-        submissionAdminAPI.getSubmissionStats({ timeRange }),
+      // Use the comprehensive analytics endpoint instead of the problematic submissions/stats
+      const [analyticsResponse, submissionsResponse] = await Promise.all([
+        analyticsAPI.getComprehensiveAnalytics({ timeRange }),
         submissionAdminAPI.getAllSubmissions({ 
           limit: 10,
+          page: 1,
           sort: 'submittedAt:desc'
         })
       ]);
 
-      console.log('📊 Stats response:', statsResponse.data);
+      console.log('📊 Analytics response:', analyticsResponse.data);
       console.log('📝 Submissions response:', submissionsResponse.data);
 
-      if (statsResponse.data) {
-        setStats(statsResponse.data);
+      const { analytics } = analyticsResponse.data;
+      
+      if (analytics && analytics.submissions) {
+        // Transform the data to match our expected format
+        const transformedStats = {
+          totals: {
+            totalSubmissions: analytics.submissions.total || 0,
+            approvedSubmissions: analytics.submissions.correctSubmissions || 0,
+            pendingSubmissions: await getPendingSubmissionsCount(),
+            rejectedSubmissions: (analytics.submissions.total - analytics.submissions.correctSubmissions) || 0,
+            totalPoints: analytics.submissions.categoryPerformance?.reduce((sum, cat) => sum + (cat.totalPoints || 0), 0) || 0,
+            averagePoints: analytics.submissions.categoryPerformance?.length > 0 ? 
+              analytics.submissions.categoryPerformance.reduce((sum, cat) => sum + (cat.averagePoints || 0), 0) / analytics.submissions.categoryPerformance.length : 0
+          },
+          statusDistribution: [
+            { _id: 'approved', count: analytics.submissions.correctSubmissions || 0 },
+            { _id: 'pending', count: await getPendingSubmissionsCount() },
+            { _id: 'rejected', count: (analytics.submissions.total - analytics.submissions.correctSubmissions) || 0 }
+          ],
+          dailyTrends: analytics.submissions.dailyTrend || []
+        };
+
+        setStats(transformedStats);
+      } else {
+        // Fallback to basic stats if comprehensive analytics fails
+        await fetchBasicStats();
       }
 
       if (submissionsResponse.data && submissionsResponse.data.submissions) {
-        setRecentSubmissions(submissionsResponse.data.submissions);
+        setRecentSubmissions(submissionsResponse.data.submissions.slice(0, 10));
       }
       
     } catch (error) {
       console.error('❌ Failed to fetch submission analytics:', error);
-      toast.error('Failed to load submission analytics');
+      // Fallback to basic stats
+      await fetchBasicStats();
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  // Fallback function to get basic stats
+  const fetchBasicStats = async () => {
+    try {
+      console.log('🔄 Using fallback stats...');
       
-      // Set safe defaults
+      const [allSubmissions, pendingSubmissions] = await Promise.all([
+        submissionAdminAPI.getAllSubmissions({ limit: 1000 }),
+        submissionAdminAPI.getPendingSubmissions({ limit: 1000 })
+      ]);
+
+      const submissions = allSubmissions.data.submissions || [];
+      const pending = pendingSubmissions.data.submissions || [];
+
+      const approvedCount = submissions.filter(s => s.submissionStatus === 'approved').length;
+      const rejectedCount = submissions.filter(s => s.submissionStatus === 'rejected').length;
+      const pendingCount = pending.length;
+
+      const basicStats = {
+        totals: {
+          totalSubmissions: submissions.length,
+          approvedSubmissions: approvedCount,
+          pendingSubmissions: pendingCount,
+          rejectedSubmissions: rejectedCount,
+          totalPoints: submissions.reduce((sum, sub) => sum + (sub.points || 0), 0),
+          averagePoints: submissions.length > 0 ? 
+            submissions.reduce((sum, sub) => sum + (sub.points || 0), 0) / submissions.length : 0
+        },
+        statusDistribution: [
+          { _id: 'approved', count: approvedCount },
+          { _id: 'pending', count: pendingCount },
+          { _id: 'rejected', count: rejectedCount }
+        ],
+        dailyTrends: generateDailyTrends(submissions)
+      };
+
+      setStats(basicStats);
+    } catch (error) {
+      console.error('❌ Fallback stats also failed:', error);
+      // Set empty stats as last resort
       setStats({
         totals: {
           totalSubmissions: 0,
@@ -95,11 +164,40 @@ const SubmissionAnalytics = () => {
         statusDistribution: [],
         dailyTrends: []
       });
-      setRecentSubmissions([]);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
     }
+  };
+
+  // Helper function to get pending submissions count
+  const getPendingSubmissionsCount = async () => {
+    try {
+      const response = await submissionAdminAPI.getPendingSubmissions({ limit: 1 });
+      return response.data.pagination?.total || 0;
+    } catch (error) {
+      return 0;
+    }
+  };
+
+  // Helper function to generate daily trends from submissions
+  const generateDailyTrends = (submissions) => {
+    const last7Days = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toISOString().split('T')[0];
+      
+      const daySubmissions = submissions.filter(sub => {
+        const subDate = new Date(sub.submittedAt).toISOString().split('T')[0];
+        return subDate === dateStr;
+      });
+
+      last7Days.push({
+        _id: dateStr,
+        count: daySubmissions.length,
+        approved: daySubmissions.filter(s => s.submissionStatus === 'approved').length,
+        pending: daySubmissions.filter(s => s.submissionStatus === 'pending').length
+      });
+    }
+    return last7Days;
   };
 
   const refreshData = async () => {
@@ -150,7 +248,7 @@ const SubmissionAnalytics = () => {
   })) || [];
 
   const dailyData = stats?.dailyTrends?.map(day => ({
-    date: day._id,
+    date: new Date(day._id).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
     submissions: day.count || 0,
     approved: day.approved || 0,
     pending: day.pending || 0
