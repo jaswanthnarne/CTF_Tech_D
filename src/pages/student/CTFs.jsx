@@ -42,83 +42,138 @@ const CTFs = () => {
   }, [filter, search, category]);
 
   const fetchCTFs = async () => {
-  try {
-    setLoading(true);
-    const params = {};
-    if (filter !== 'all') params.status = filter;
-    if (search) params.search = search;
-    if (category !== 'all') params.category = category;
-
-    console.log('📡 Fetching CTFs with params:', params);
-    
-    // ✅ CORRECT: Use the available CTFs endpoint for students
-    const response = await userCTFAPI.getAvailableCTFs(params);
-    console.log('✅ Fetched CTFs:', response.data.ctfs);
-    setCtfs(response.data.ctfs || []);
-
-    // Fetch joined status for each CTF
-    const joined = new Set();
-    for (const ctf of response.data.ctfs || []) {
-      try {
-        const joinedResponse = await userCTFAPI.checkJoined(ctf._id);
-        if (joinedResponse.data.joined) {
-          joined.add(ctf._id);
-        }
-      } catch (error) {
-        console.error(`Failed to check joined status for CTF ${ctf._id}:`, error);
-      }
-    }
-    setJoinedCTFs(joined);
-  } catch (error) {
-    console.error('❌ Failed to fetch CTFs:', error);
-    toast.error('Failed to load CTFs');
-  } finally {
-    setLoading(false);
-  }
-};
-
-  const handleJoinCTF = async (ctfId) => {
     try {
-      await userCTFAPI.joinCTF(ctfId);
-      setJoinedCTFs(prev => new Set([...prev, ctfId]));
-      toast.success('Successfully joined CTF!');
-      fetchCTFs(); // Refresh the list
+      setLoading(true);
+      const params = {};
+      if (filter !== 'all') params.status = filter;
+      if (search) params.search = search;
+      if (category !== 'all') params.category = category;
+
+      console.log('📡 Fetching CTFs with params:', params);
+      
+      // Use the correct endpoint
+      const response = await userCTFAPI.getAvailableCTFs(params);
+      console.log('✅ Fetched CTFs:', response.data.ctfs);
+      setCtfs(response.data.ctfs || []);
+
+      // Fetch joined status for each CTF
+      const joined = new Set();
+      for (const ctf of response.data.ctfs || []) {
+        try {
+          const joinedResponse = await userCTFAPI.checkJoined(ctf._id);
+          if (joinedResponse.data.joined) {
+            joined.add(ctf._id);
+          }
+        } catch (error) {
+          console.error(`Failed to check joined status for CTF ${ctf._id}:`, error);
+        }
+      }
+      setJoinedCTFs(joined);
     } catch (error) {
-      console.error('❌ Join CTF error:', error);
-      toast.error(error.response?.data?.error || 'Failed to join CTF');
+      console.error('❌ Failed to fetch CTFs:', error);
+      toast.error('Failed to load CTFs');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleVisitCTF = (ctfLink, ctfTitle) => {
-    if (!ctfLink) {
-      toast.error('No CTF link available');
-      return;
-    }
-    
-    let url = ctfLink;
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      url = 'https://' + url;
-    }
-    
-    window.open(url, '_blank', 'noopener,noreferrer');
+  // ==========================
+  // IST TIME HELPER FUNCTIONS (Frontend)
+  // ==========================
+
+  // Get current IST time (frontend)
+  const getCurrentIST = () => {
+    const now = new Date();
+    // IST is UTC+5:30
+    return new Date(now.getTime() + (5.5 * 60 * 60 * 1000));
   };
 
-  // Enhanced status calculation that matches backend logic
+  // Convert date to IST string for display
+  const toISTString = (date) => {
+    if (!date) return '';
+    const istDate = new Date(date.getTime() + (5.5 * 60 * 60 * 1000));
+    return istDate.toLocaleString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      hour12: false,
+    });
+  };
+
+  // Check if within active hours considering IST timezone
+  const isWithinActiveHours = (ctf) => {
+    if (!ctf.activeHours || !ctf.activeHours.startTime || !ctf.activeHours.endTime) {
+      return false;
+    }
+
+    const currentIST = getCurrentIST();
+    const currentISTString = `${currentIST.getUTCHours().toString().padStart(2, '0')}:${currentIST.getUTCMinutes().toString().padStart(2, '0')}`;
+
+    console.log('🕒 Frontend Active Hours Check (IST):', {
+      title: ctf.title,
+      startTime: ctf.activeHours.startTime,
+      endTime: ctf.activeHours.endTime,
+      currentIST: currentISTString,
+      scheduleStart: ctf.schedule.startDate,
+      scheduleEnd: ctf.schedule.endDate
+    });
+
+    // First check if we're within the schedule dates (IST)
+    const scheduleStart = new Date(ctf.schedule.startDate);
+    const scheduleEnd = new Date(ctf.schedule.endDate);
+    const scheduleStartIST = new Date(scheduleStart.getTime() + (5.5 * 60 * 60 * 1000));
+    const scheduleEndIST = new Date(scheduleEnd.getTime() + (5.5 * 60 * 60 * 1000));
+
+    if (currentIST < scheduleStartIST || currentIST > scheduleEndIST) {
+      console.log('❌ Outside schedule dates');
+      return false;
+    }
+
+    // Now check active hours
+    const [startHours, startMinutes] = ctf.activeHours.startTime.split(':').map(Number);
+    const [endHours, endMinutes] = ctf.activeHours.endTime.split(':').map(Number);
+
+    const currentMinutes = currentIST.getUTCHours() * 60 + currentIST.getUTCMinutes();
+    const startMinutesTotal = startHours * 60 + startMinutes;
+    const endMinutesTotal = endHours * 60 + endMinutes;
+
+    console.log('📊 Frontend Time Comparison (IST):', {
+      currentMinutes,
+      startMinutesTotal,
+      endMinutesTotal,
+      currentISTTime: currentISTString
+    });
+
+    // Handle case where active hours cross midnight
+    let isActive;
+    if (endMinutesTotal < startMinutesTotal) {
+      // Active hours cross midnight (e.g., 22:00 - 06:00)
+      isActive = currentMinutes >= startMinutesTotal || currentMinutes <= endMinutesTotal;
+    } else {
+      // Normal case (e.g., 09:00 - 18:00)
+      isActive = currentMinutes >= startMinutesTotal && currentMinutes <= endMinutesTotal;
+    }
+
+    console.log('✅ Frontend Active Status (IST):', isActive);
+    return isActive;
+  };
+
+  // Enhanced status calculation that matches backend logic with IST
   const calculateCurrentStatus = (ctf) => {
     if (!ctf) return { status: 'inactive', isCurrentlyActive: false };
 
-    console.log('🔍 Calculating status for CTF:', {
+    console.log('🔍 Frontend Calculating status for CTF:', {
       title: ctf.title,
       backendStatus: ctf.status,
       isVisible: ctf.isVisible,
       isPublished: ctf.isPublished,
-      activeHours: ctf.activeHours
+      activeHours: ctf.activeHours,
+      scheduleStart: ctf.schedule.startDate,
+      scheduleEnd: ctf.schedule.endDate
     });
 
     // Use backend status as primary source
     const backendStatus = ctf.status?.toLowerCase();
     
-    // If backend says it's active, check if within active hours
+    // If backend says it's active, check if within active hours using IST
     if (backendStatus === 'active') {
       const isCurrentlyActive = isWithinActiveHours(ctf);
       return { 
@@ -132,37 +187,6 @@ const CTFs = () => {
       status: backendStatus || 'inactive', 
       isCurrentlyActive: false 
     };
-  };
-
-  // Check if within active hours (24-hour format)
-  const isWithinActiveHours = (ctf) => {
-    if (!ctf.activeHours || !ctf.activeHours.startTime || !ctf.activeHours.endTime) {
-      return true; // If no active hours specified, consider it always active
-    }
-
-    const now = currentTime;
-    
-    // Convert times to minutes since midnight for comparison (24-hour format)
-    const timeToMinutes = (timeStr) => {
-      const [hours, minutes] = timeStr.split(':').map(Number);
-      return hours * 60 + minutes;
-    };
-
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
-    const startMinutes = timeToMinutes(ctf.activeHours.startTime);
-    const endMinutes = timeToMinutes(ctf.activeHours.endTime);
-
-    console.log('🕒 Time check:', {
-      currentTime: `${now.getHours()}:${now.getMinutes()}`,
-      currentMinutes,
-      startTime: ctf.activeHours.startTime,
-      startMinutes,
-      endTime: ctf.activeHours.endTime,
-      endMinutes,
-      withinHours: currentMinutes >= startMinutes && currentMinutes <= endMinutes
-    });
-
-    return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
   };
 
   // Check if join button should be enabled
@@ -203,7 +227,7 @@ const CTFs = () => {
       inactive_hours: { 
         color: 'bg-yellow-100 text-yellow-800', 
         label: 'Inactive Hours',
-        description: `Active ${ctf.activeHours.startTime}-${ctf.activeHours.endTime}`
+        description: `Active ${ctf.activeHours.startTime}-${ctf.activeHours.endTime} IST`
       },
       upcoming: { 
         color: 'bg-blue-100 text-blue-800', 
@@ -256,6 +280,26 @@ const CTFs = () => {
     );
   };
 
+  // Format date in IST
+  const formatDateIST = (date) => {
+    if (!date) return '';
+    const istDate = new Date(date.getTime() + (5.5 * 60 * 60 * 1000));
+    return istDate.toLocaleDateString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+    });
+  };
+
+  // Format time for display (24h to 12h with AM/PM)
+  const formatTimeForDisplay = (time24) => {
+    if (!time24) return '';
+    
+    const [hours, minutes] = time24.split(':').map(Number);
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const displayHours = hours % 12 || 12;
+    
+    return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+  };
+
   const categories = ['all', 'Web Security', 'Cryptography', 'Forensics', 'Reverse Engineering', 'Pwn', 'Misc'];
   
   // Filter CTFs based on real-time status
@@ -268,6 +312,10 @@ const CTFs = () => {
     if (category !== 'all' && ctf.category !== category) return false;
     return true;
   });
+
+  // Get current IST time for display
+  const currentIST = getCurrentIST();
+  const currentISTString = `${currentIST.getUTCHours().toString().padStart(2, '0')}:${currentIST.getUTCMinutes().toString().padStart(2, '0')}`;
 
   return (
     <StudentLayout title="CTF Challenges" subtitle="Browse and join available challenges">
@@ -302,6 +350,7 @@ const CTFs = () => {
             >
               <option value="all">All Status</option>
               <option value="active">Active</option>
+              <option value="inactive_hours">Inactive Hours</option>
               <option value="upcoming">Upcoming</option>
               <option value="ended">Ended</option>
               <option value="inactive">Inactive</option>
@@ -332,11 +381,11 @@ const CTFs = () => {
       </div>
 
       {/* Debug Info */}
-      {/* <div className="mb-4 p-3 bg-gray-100 rounded text-xs">
+      <div className="mb-4 p-3 bg-gray-100 rounded text-xs">
         <strong>Debug Info:</strong> Loaded {ctfs.length} CTFs, Filtered: {filteredCTFs.length} | 
-        Current Time: {currentTime.toLocaleTimeString()} | 
-        API Endpoint: /user/ctfs/available
-      </div> */}
+        Current IST Time: {currentISTString} | 
+        Timezone: Asia/Kolkata
+      </div>
 
       {/* CTF Grid */}
       {loading ? (
@@ -388,13 +437,13 @@ const CTFs = () => {
                     <div className="flex items-center text-sm text-gray-500">
                       <Calendar className="h-4 w-4 mr-2 flex-shrink-0" />
                       <span className="truncate">
-                        {new Date(ctf.schedule.startDate).toLocaleDateString()} - {new Date(ctf.schedule.endDate).toLocaleDateString()}
+                        {formatDateIST(new Date(ctf.schedule.startDate))} - {formatDateIST(new Date(ctf.schedule.endDate))}
                       </span>
                     </div>
                     <div className="flex items-center text-sm text-gray-500">
                       <Clock className="h-4 w-4 mr-2 flex-shrink-0" />
                       <span className="truncate">
-                        {ctf.activeHours.startTime} - {ctf.activeHours.endTime} ({ctf.activeHours.timezone})
+                        {formatTimeForDisplay(ctf.activeHours.startTime)} - {formatTimeForDisplay(ctf.activeHours.endTime)} IST
                       </span>
                     </div>
                     <div className="flex items-center text-sm text-gray-500">
