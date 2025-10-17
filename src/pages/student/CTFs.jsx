@@ -100,25 +100,27 @@ const CTFs = () => {
   };
 
   // Check if current time is within active hours for today
- // In CTFs.jsx - Replace the status calculation functions
+// In CTFs.jsx - Update the isWithinActiveHours function
 const isWithinActiveHours = (ctf) => {
   if (!ctf.activeHours || !ctf.activeHours.startTime || !ctf.activeHours.endTime) {
-    return true; // If no active hours specified, consider it always active
+    return true;
   }
 
   const now = currentTime;
   
-  // Convert times to minutes since midnight for comparison
-  const timeToMinutes = (timeStr) => {
-    const [hours, minutes] = timeStr.split(':').map(Number);
-    return hours * 60 + minutes;
-  };
+  const [startHours, startMinutes] = ctf.activeHours.startTime.split(':').map(Number);
+  const [endHours, endMinutes] = ctf.activeHours.endTime.split(':').map(Number);
 
-  const currentMinutes = timeToMinutes(now.toTimeString().slice(0, 8));
-  const startMinutes = timeToMinutes(ctf.activeHours.startTime);
-  const endMinutes = timeToMinutes(ctf.activeHours.endTime);
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const startMinutesTotal = startHours * 60 + startMinutes;
+  const endMinutesTotal = endHours * 60 + endMinutes;
 
-  return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+  // Handle case where active hours cross midnight
+  if (endMinutesTotal < startMinutesTotal) {
+    return currentMinutes >= startMinutesTotal || currentMinutes <= endMinutesTotal;
+  } else {
+    return currentMinutes >= startMinutesTotal && currentMinutes <= endMinutesTotal;
+  }
 };
 
 // Real-time status calculation
