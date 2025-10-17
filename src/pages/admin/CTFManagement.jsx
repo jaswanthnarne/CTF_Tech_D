@@ -4,7 +4,7 @@ import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Table from '../../components/ui/Table';
 import Modal from '../../components/ui/Modal';
-import CTFForm from '../../components/forms/CTFForm';
+import CTFForm from '../../components/forms/CTFFrom';
 import { ctfAPI } from '../../services/admin';
 import { 
   Plus, 
