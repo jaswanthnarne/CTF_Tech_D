@@ -44,35 +44,18 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-// const studentLogin = async (credentials) => {
-//   try {
-//     const response = await authAPI.login(credentials);
-//     const { user, token } = response.data;
-    
-//     // Store student token as 'token' (not 'userToken')
-//     localStorage.setItem('token', token);
-//     localStorage.setItem('user', JSON.stringify(user));
-    
-//     setUser(user);
-//     setIsAuthenticated(true);
-//     setUserType('student');
-    
-//     return { success: true, user };
-//   } catch (error) {
-//     return { 
-//       success: false, 
-//       error: error.response?.data?.error || 'Login failed' 
-//     };
-//   }
-// };
-// In your AuthContext - update login functions
+// Student login function
 const studentLogin = async (credentials) => {
   try {
+    setLoading(true);
     const response = await authAPI.login(credentials);
     
-    if (response.data.token) {
+    if (response.data.token && response.data.user) {
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
+      setUser(response.data.user);
+      setIsAuthenticated(true);
+      setUserType('student');
     }
     
     return { success: true, user: response.data.user };
@@ -110,6 +93,7 @@ const register = async (data) => {
 
 const checkAuth = async () => {
   try {
+    setLoading(true);
     const adminToken = localStorage.getItem('adminToken');
     const userToken = localStorage.getItem('token'); // Changed from 'userToken' to 'token'
     
