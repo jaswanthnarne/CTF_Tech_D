@@ -14,9 +14,7 @@ import {
   PieChart, 
   Pie, 
   Cell,
-  ResponsiveContainer,
-  LineChart,
-  Line
+  ResponsiveContainer
 } from 'recharts';
 import {
   Download,
@@ -34,7 +32,8 @@ import Loader from '../../components/ui/Loader';
 import toast from 'react-hot-toast';
 
 const SubmissionAnalytics = () => {
-  const [analytics, setAnalytics] = useState(null);
+  const [stats, setStats] = useState(null);
+  const [recentSubmissions, setRecentSubmissions] = useState([]);
   const [timeRange, setTimeRange] = useState('7d');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -55,16 +54,37 @@ const SubmissionAnalytics = () => {
   }, [timeRange, autoRefresh]);
 
   const fetchAnalytics = async () => {
-  try {
-    setRefreshing(true);
-    
-    // Option 1: Use the existing submission stats endpoint
-    const response = await submissionAdminAPI.getSubmissionStats({ timeRange });
-    
-    if (response.data) {
-      // Transform the data to match our expected format
-      setAnalytics({
-        totals: response.data.totals || {
+    try {
+      setRefreshing(true);
+      console.log('🔄 Fetching submission analytics...');
+      
+      // Use the working submissions stats endpoint
+      const [statsResponse, submissionsResponse] = await Promise.all([
+        submissionAdminAPI.getSubmissionStats({ timeRange }),
+        submissionAdminAPI.getAllSubmissions({ 
+          limit: 10,
+          sort: 'submittedAt:desc'
+        })
+      ]);
+
+      console.log('📊 Stats response:', statsResponse.data);
+      console.log('📝 Submissions response:', submissionsResponse.data);
+
+      if (statsResponse.data) {
+        setStats(statsResponse.data);
+      }
+
+      if (submissionsResponse.data && submissionsResponse.data.submissions) {
+        setRecentSubmissions(submissionsResponse.data.submissions);
+      }
+      
+    } catch (error) {
+      console.error('❌ Failed to fetch submission analytics:', error);
+      toast.error('Failed to load submission analytics');
+      
+      // Set safe defaults
+      setStats({
+        totals: {
           totalSubmissions: 0,
           approvedSubmissions: 0,
           pendingSubmissions: 0,
@@ -72,36 +92,15 @@ const SubmissionAnalytics = () => {
           totalPoints: 0,
           averagePoints: 0
         },
-        statusDistribution: response.data.statusDistribution || [],
-        dailyTrend: response.data.dailyTrends || [],
-        recentSubmissions: [] // We'll need to fetch this separately
+        statusDistribution: [],
+        dailyTrends: []
       });
-    } else {
-      throw new Error('Invalid response format');
+      setRecentSubmissions([]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-  } catch (error) {
-    console.error('Failed to fetch submission analytics:', error);
-    toast.error('Failed to load submission analytics');
-    
-    // Set safe defaults
-    setAnalytics({
-      totals: {
-        totalSubmissions: 0,
-        approvedSubmissions: 0,
-        pendingSubmissions: 0,
-        rejectedSubmissions: 0,
-        totalPoints: 0,
-        averagePoints: 0
-      },
-      statusDistribution: [],
-      dailyTrend: [],
-      recentSubmissions: []
-    });
-  } finally {
-    setLoading(false);
-    setRefreshing(false);
-  }
-};
+  };
 
   const refreshData = async () => {
     await fetchAnalytics();
@@ -110,7 +109,6 @@ const SubmissionAnalytics = () => {
 
   const handleExport = async (type) => {
     try {
-      // Implementation for exporting data
       toast.success(`Exporting ${type} data...`);
     } catch (error) {
       toast.error('Export failed');
@@ -146,17 +144,16 @@ const SubmissionAnalytics = () => {
   };
 
   // Prepare data for charts
-  const statusData = analytics?.statusDistribution?.map(item => ({
+  const statusData = stats?.statusDistribution?.map(item => ({
     name: item._id ? item._id.charAt(0).toUpperCase() + item._id.slice(1) : 'Unknown',
     value: item.count || 0
   })) || [];
 
-  const dailyData = analytics?.dailyTrend?.map(day => ({
+  const dailyData = stats?.dailyTrends?.map(day => ({
     date: day._id,
-    submissions: day.total || 0,
+    submissions: day.count || 0,
     approved: day.approved || 0,
-    pending: day.pending || 0,
-    rejected: day.rejected || 0
+    pending: day.pending || 0
   })) || [];
 
   // Chart colors
@@ -177,7 +174,7 @@ const SubmissionAnalytics = () => {
     );
   }
 
-  const { totals, recentSubmissions = [] } = analytics || {};
+  const { totals = {} } = stats || {};
 
   return (
     <Layout title="Submission Analytics" subtitle="Real-time submission insights and statistics">
@@ -236,28 +233,28 @@ const SubmissionAnalytics = () => {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
         <StatCard
           title="Total Submissions"
-          value={totals?.totalSubmissions || 0}
+          value={totals.totalSubmissions || 0}
           description="All submissions"
           icon={FileText}
           color="blue"
         />
         <StatCard
           title="Approved"
-          value={totals?.approvedSubmissions || 0}
+          value={totals.approvedSubmissions || 0}
           description="Successfully solved"
           icon={CheckCircle}
           color="green"
         />
         <StatCard
           title="Pending"
-          value={totals?.pendingSubmissions || 0}
+          value={totals.pendingSubmissions || 0}
           description="Awaiting review"
           icon={Clock}
           color="yellow"
         />
         <StatCard
           title="Rejected"
-          value={totals?.rejectedSubmissions || 0}
+          value={totals.rejectedSubmissions || 0}
           description="Incorrect submissions"
           icon={XCircle}
           color="red"
@@ -269,7 +266,7 @@ const SubmissionAnalytics = () => {
         <Card className="p-4 sm:p-6 text-center bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
           <TrendingUp className="h-8 w-8 sm:h-10 sm:w-10 text-blue-600 mx-auto mb-2" />
           <div className="text-xl sm:text-2xl font-bold text-blue-700">
-            {totals?.totalPoints || 0}
+            {totals.totalPoints || 0}
           </div>
           <div className="text-xs sm:text-sm text-blue-600 font-medium">Total Points Awarded</div>
         </Card>
@@ -277,7 +274,7 @@ const SubmissionAnalytics = () => {
         <Card className="p-4 sm:p-6 text-center bg-gradient-to-br from-green-50 to-green-100 border-green-200">
           <Activity className="h-8 w-8 sm:h-10 sm:w-10 text-green-600 mx-auto mb-2" />
           <div className="text-xl sm:text-2xl font-bold text-green-700">
-            {totals?.averagePoints ? Math.round(totals.averagePoints) : 0}
+            {totals.averagePoints ? Math.round(totals.averagePoints) : 0}
           </div>
           <div className="text-xs sm:text-sm text-green-600 font-medium">Average Points</div>
         </Card>
@@ -294,7 +291,7 @@ const SubmissionAnalytics = () => {
                 Submission Status Distribution
               </h3>
               <span className="text-xs sm:text-sm text-gray-500">
-                {totals?.totalSubmissions || 0} total
+                {totals.totalSubmissions || 0} total
               </span>
             </div>
           </Card.Header>
@@ -340,7 +337,7 @@ const SubmissionAnalytics = () => {
                   <div className="text-right">
                     <span className="text-sm font-bold text-gray-900">{entry.value}</span>
                     <span className="text-xs text-gray-500 ml-1">
-                      ({Math.round((entry.value / (totals?.totalSubmissions || 1)) * 100)}%)
+                      ({Math.round((entry.value / (totals.totalSubmissions || 1)) * 100)}%)
                     </span>
                   </div>
                 </div>
@@ -390,9 +387,7 @@ const SubmissionAnalytics = () => {
               Recent Submissions
             </h3>
             <span className="text-xs sm:text-sm text-gray-500">
-              {timeRange === '24h' ? 'Last 24 hours' : 
-               timeRange === '7d' ? 'Last 7 days' : 
-               timeRange === '30d' ? 'Last 30 days' : 'All time'}
+              Latest 10 submissions
             </span>
           </div>
         </Card.Header>
