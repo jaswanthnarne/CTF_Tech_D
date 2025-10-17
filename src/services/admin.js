@@ -1,3 +1,5 @@
+// admin/api.js - CORRECTED VERSION
+
 import api from './api';
 
 // Auth endpoints
@@ -6,21 +8,22 @@ export const adminAuth = {
   logout: () => api.post('/admin/logout'),
   getProfile: () => api.get('/admin/profile'),
   registerFirstAdmin: (data) => api.post('/admin/register-first-admin', data),
+  createAdmin: (data) => api.post('/admin/create-admin', data), // ADDED
 };
 
-// User management
+// User management - CORRECTED
 export const userAPI = {
   getAllUsers: (params) => api.get('/admin/users', { params }),
-  getUser: (id) => api.get(`/admin/users/${id}`),
+  getUser: (id) => api.get(`/admin/users/${id}`), // ✅ NOW EXISTS
   createUser: (data) => api.post('/admin/users/create', data),
   updateUser: (id, data) => api.put(`/admin/users/${id}`, data),
   deleteUser: (id) => api.delete(`/admin/users/${id}`),
-  resetPassword: (id) => api.post(`/admin/users/${id}/reset-password`),
-  getLoginHistory: (id) => api.get(`/admin/users/${id}/login-history`),
+  resetPassword: (id) => api.post(`/admin/users/${id}/reset-password`), // ✅ NOW EXISTS
+  getLoginHistory: (id) => api.get(`/admin/users/${id}/login-history`), // ✅ NOW EXISTS
   exportUsers: () => api.get('/admin/export/users', { responseType: 'blob' }),
 };
 
-// CTF management
+// CTF management - CORRECTED
 export const ctfAPI = {
   // Basic CRUD operations
   getAllCTFs: (params) => api.get('/admin/ctfs', { params }),
@@ -52,32 +55,34 @@ export const ctfAPI = {
   exportCTFParticipants: (ctfId) => api.get(`/admin/export/ctfs/${ctfId}/participants`, { responseType: 'blob' }),
 };
 
-// Analytics - Updated with submission analytics endpoints
+// Analytics - CORRECTED
 export const analyticsAPI = {
   getDashboardStats: () => api.get('/admin/dashboard-stats'),
   getComprehensiveAnalytics: (params) => api.get('/admin/analytics/comprehensive', { params }),
-  getSubmissionAnalytics: (params) => api.get('/admin/analytics/submissions', { params }),
+  getSubmissionAnalytics: (params) => api.get('/admin/analytics/submissions', { params }), // ✅ NOW EXISTS
   getSubmissionStats: (params) => api.get('/admin/submissions/stats', { params }),
   updateCTFStatuses: () => api.post('/admin/update-ctf-statuses'),
   getRecentLogins: (params) => api.get('/admin/recent-logins', { params }),
   getRecentActivity: (params) => api.get('/admin/analytics/recent-activity', { params }),
+  getRealTimeCTFStats: () => api.get('/admin/analytics/ctf-real-time'), // ✅ NOW EXISTS
+  getPlatformStats: () => api.get('/admin/analytics/platform-stats'), // ✅ NOW EXISTS
 };
 
-// System
+// System - CORRECTED
 export const systemAPI = {
   getSystemHealth: () => api.get('/admin/system-health'),
   getSystemConfig: () => api.get('/admin/system/config'),
-  bulkActivateUsers: (userIds) => api.post('/admin/bulk/users/activate', { userIds }),
-  bulkDeactivateUsers: (userIds) => api.post('/admin/bulk/users/deactivate', { userIds }),
+  bulkActivateUsers: (userIds) => api.post('/admin/bulk/users/activate', { userIds }), // ✅ NOW EXISTS
+  bulkDeactivateUsers: (userIds) => api.post('/admin/bulk/users/deactivate', { userIds }), // ✅ NOW EXISTS
 };
 
-// Submissions
+// Submissions - CORRECTED
 export const submissionAdminAPI = {
   getPendingSubmissions: (params) => api.get('/admin/submissions/pending', { params }),
   getAllSubmissions: (params) => api.get('/admin/submissions', { params }),
   getSubmission: (submissionId) => api.get(`/admin/submissions/${submissionId}`),
   getSubmissionScreenshot: (submissionId) => api.get(`/admin/submissions/${submissionId}/screenshot`),
-  getUserSubmissions: (userId, params) => api.get(`/admin/users/${userId}/submissions`, { params }),
+  getUserSubmissions: (userId, params) => api.get(`/admin/users/${userId}/submissions`, { params }), // ✅ NOW EXISTS
   approveSubmission: (submissionId, data) => api.post(`/admin/submissions/${submissionId}/approve`, data),
   rejectSubmission: (submissionId, data) => api.post(`/admin/submissions/${submissionId}/reject`, data),
   getSubmissionStats: (params) => api.get('/admin/submissions/stats', { params }),

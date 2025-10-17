@@ -68,25 +68,86 @@ const UserManagement = () => {
   };
 
   // Enhanced function to fetch user submissions and calculate stats
-  const fetchUserSubmissions = async (userId) => {
-    try {
-      setSubmissionsLoading(true);
-      const response = await submissionAdminAPI.getUserSubmissions(userId);
-      const submissions = response.data.submissions || [];
-      const user = response.data.user;
-      
-      setUserSubmissions(submissions);
-      setSelectedUser(user);
-      
-      // Calculate user statistics
-      const stats = calculateUserStats(submissions, user);
+ // Replace the fetchUserSubmissions function with better error handling
+const fetchUserSubmissions = async (userId) => {
+  try {
+    setSubmissionsLoading(true);
+    
+    // Use getAllSubmissions with user filter instead of getUserSubmissions
+    const response = await submissionAdminAPI.getAllSubmissions({ 
+      userId, 
+      limit: 100 
+    });
+    
+    const submissions = response.data.submissions || [];
+    const user = users.find(u => u._id === userId); // Get user from existing data
+    
+    setUserSubmissions(submissions);
+    setSelectedUser(user);
+    
+    // Calculate user statistics
+    const stats = calculateUserStats(submissions, user);
+    setUserStats(stats);
+  } catch (error) {
+    console.error('Failed to fetch user submissions:', error);
+    toast.error('Failed to fetch user submissions');
+    // Fallback: filter from existing submissions data if available
+    const userSubs = userSubmissions.filter(sub => sub.user?._id === userId);
+    if (userSubs.length > 0) {
+      setUserSubmissions(userSubs);
+      const stats = calculateUserStats(userSubs, selectedUser);
       setUserStats(stats);
-    } catch (error) {
-      toast.error('Failed to fetch user submissions');
-    } finally {
-      setSubmissionsLoading(false);
     }
-  };
+  } finally {
+    setSubmissionsLoading(false);
+  }
+};
+
+// Fix CSV export to handle special characters
+const exportUserSubmissions = () => {
+  if (!selectedUser || userSubmissions.length === 0) return;
+  
+  try {
+    const escapeCsv = (str) => {
+      if (str === null || str === undefined) return '';
+      return `"${String(str).replace(/"/g, '""')}"`;
+    };
+
+    const headers = ['CTF Title', 'Category', 'Submitted At', 'Status', 'Points', 'Flag', 'Screenshot URL', 'Attempt Number', 'Reviewed By', 'Reviewed At', 'Admin Feedback'];
+    
+    const csvContent = [
+      headers.join(','),
+      ...userSubmissions.map(sub => [
+        escapeCsv(sub.ctf?.title),
+        escapeCsv(sub.ctf?.category),
+        escapeCsv(new Date(sub.submittedAt).toLocaleString()),
+        escapeCsv(sub.submissionStatus),
+        escapeCsv(sub.points || 0),
+        escapeCsv(sub.flag),
+        escapeCsv(sub.screenshot?.url),
+        escapeCsv(sub.attemptNumber || 1),
+        escapeCsv(sub.reviewedBy?.fullName),
+        escapeCsv(sub.reviewedAt ? new Date(sub.reviewedAt).toLocaleString() : ''),
+        escapeCsv(sub.adminFeedback)
+      ].join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${selectedUser.fullName.replace(/[^a-z0-9]/gi, '_')}-submissions.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    
+    toast.success('Submissions exported successfully');
+  } catch (error) {
+    console.error('Export failed:', error);
+    toast.error('Failed to export submissions');
+  }
+};
 
   // Calculate user statistics from submissions
   const calculateUserStats = (submissions, user) => {
@@ -257,46 +318,6 @@ const UserManagement = () => {
         {config.label}
       </span>
     );
-  };
-
-  // Export user submissions
-  const exportUserSubmissions = () => {
-    if (!selectedUser) return;
-    
-    // Create CSV content
-    const headers = ['CTF Title', 'Category', 'Submitted At', 'Status', 'Points', 'Flag', 'Screenshot URL','Attempt Number','Reviewed By','Reviewed At','Admin Feedback'];
-    console.log("Submissions data",userSubmissions);
-    const csvContent = [
-      headers.join(','),
-      ...userSubmissions.map(sub => [
-        `"${sub.ctf?.title || 'Unknown'}"`,
-        `"${sub.ctf?.category || 'No category'}"`,
-        `"${new Date(sub.submittedAt).toLocaleString()}"`,
-        `"${sub.submissionStatus}"`,
-        `"${sub.points || 0}"`,
-        `"${sub.flag}"`,
-        `"${sub.screenshot?.url || 'N/A'}"`,
-        `"${sub.attemptNumber || 1}"`,
-        `"${sub.reviewedBy ? sub.reviewedBy.fullName : 'N/A'}"`,
-        `"${sub.reviewedAt ? new Date(sub.reviewedAt).toLocaleString() : 'N/A'}"`,
-        `"${sub.adminFeedback || 'N/A'}"`,
-
-      
-      ].join(','))
-    ].join('\n');
-    
-    // Create and download file
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${selectedUser.fullName}-submissions.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
-    
-    toast.success('Submissions exported successfully');
   };
 
   // Filter users based on search and filters
