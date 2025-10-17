@@ -1,4 +1,4 @@
-// Student CTF endpoints - CORRECTED
+// Student CTF endpoints - CORRECTED#
 import api from './api';
 export const userCTFAPI = {
   // CTF listing and details
