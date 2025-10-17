@@ -19,13 +19,14 @@ import {
   Eye,
   EyeOff,
   PlayCircle,
-  PauseCircle
+  PauseCircle,
+  RefreshCw
 } from 'lucide-react';
-import { analyticsAPI, ctfAPI } from '../../services/admin';
+import { analyticsAPI, ctfAPI, userAPI } from '../../services/admin';
 import toast from 'react-hot-toast';
 
 // StatCard is your custom component - NOT from lucide-react
-const StatCard = ({ title, value, change, icon: Icon, color = 'blue', onClick, clickable = false }) => {
+const StatCard = ({ title, value, description, icon: Icon, color = 'blue', onClick, clickable = false }) => {
   const colors = {
     blue: 'text-blue-600 bg-blue-100',
     green: 'text-green-600 bg-green-100',
@@ -49,11 +50,9 @@ const StatCard = ({ title, value, change, icon: Icon, color = 'blue', onClick, c
               <dt className="text-sm font-medium text-gray-500 truncate">{title}</dt>
               <dd>
                 <div className="text-lg font-semibold text-gray-900">{value}</div>
-                {change && (
-                  <div className={`text-sm font-medium ${
-                    change > 0 ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {change > 0 ? '+' : ''}{change}% from last week
+                {description && (
+                  <div className="text-sm text-gray-500 mt-1">
+                    {description}
                   </div>
                 )}
               </dd>
@@ -231,12 +230,14 @@ const RecentActivityCard = ({ activity, index }) => {
 
 const Dashboard = () => {
   const [stats, setStats] = useState(null);
+  const [comprehensiveAnalytics, setComprehensiveAnalytics] = useState(null);
   const [recentActivity, setRecentActivity] = useState([]);
   const [recentLogins, setRecentLogins] = useState([]);
   const [ctfStatus, setCtfStatus] = useState({});
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [ctfs, setCtfs] = useState([]);
+  const [refreshLoading, setRefreshLoading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -255,14 +256,45 @@ const Dashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      setLoading(true);
-      const [statsResponse, loginsResponse] = await Promise.all([
+      setRefreshLoading(true);
+      
+      // Fetch comprehensive analytics for real-time data
+      const [statsResponse, analyticsResponse, loginsResponse, ctfsResponse] = await Promise.all([
         analyticsAPI.getDashboardStats(),
-        analyticsAPI.getRecentLogins({ limit: 8 })
+        analyticsAPI.getComprehensiveAnalytics({ timeRange: '24h' }),
+        analyticsAPI.getRecentLogins({ limit: 8 }),
+        ctfAPI.getAllCTFs({ limit: 50, page: 1 })
       ]);
       
       const { stats, recentActivity } = statsResponse.data;
+      const { analytics } = analyticsResponse.data;
       
+      // Calculate real-time CTF status from actual CTF data
+      const currentTime = new Date();
+      const ctfStatusBreakdown = {
+        active: { count: 0 },
+        upcoming: { count: 0 },
+        ended: { count: 0 },
+        inactive: { count: 0 }
+      };
+
+      ctfsResponse.data.ctfs.forEach(ctf => {
+        const startDate = new Date(ctf.schedule?.startDate);
+        const endDate = new Date(ctf.schedule?.endDate);
+        
+        if (ctf.status === 'active') {
+          if (currentTime >= startDate && currentTime <= endDate) {
+            ctfStatusBreakdown.active.count++;
+          } else if (currentTime < startDate) {
+            ctfStatusBreakdown.upcoming.count++;
+          } else {
+            ctfStatusBreakdown.ended.count++;
+          }
+        } else {
+          ctfStatusBreakdown.inactive.count++;
+        }
+      });
+
       // Ensure recentActivity has proper types
       const safeRecentActivity = Array.isArray(recentActivity) 
         ? recentActivity.map(activity => ({
@@ -273,67 +305,90 @@ const Dashboard = () => {
         : [];
       
       setStats(stats || {});
+      setComprehensiveAnalytics(analytics || {});
       setRecentActivity(safeRecentActivity);
       setRecentLogins(loginsResponse.data?.recentLogins || []);
-      setCtfStatus(stats?.ctfStatusBreakdown || {});
+      setCtfStatus(ctfStatusBreakdown);
+      setCtfs(ctfsResponse.data.ctfs || []);
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
       toast.error('Failed to fetch dashboard data');
       
       // Set safe defaults on error
       setStats({});
+      setComprehensiveAnalytics({});
       setRecentActivity([]);
       setRecentLogins([]);
       setCtfStatus({});
+      setCtfs([]);
     } finally {
       setLoading(false);
+      setRefreshLoading(false);
     }
   };
 
   const refreshCTFStatus = async () => {
     try {
       const response = await ctfAPI.getAllCTFs();
-      const updatedCtfs = response.data.ctfs.map(ctf => ({
-        ...ctf,
-        currentStatus: ctf.calculateStatus?.(),
-        isCurrentlyActive: ctf.isCurrentlyActive?.()
-      }));
+      const updatedCtfs = response.data.ctfs || [];
       setCtfs(updatedCtfs);
     } catch (error) {
       console.error('Failed to refresh CTF status:', error);
     }
   };
 
-  useEffect(() => {
-    refreshCTFStatus();
-    const interval = setInterval(refreshCTFStatus, 60000); // Refresh every minute
-    return () => clearInterval(interval);
-  }, []);
-
-  const refreshData = () => {
-    fetchDashboardData();
+  const refreshData = async () => {
+    setRefreshLoading(true);
+    await fetchDashboardData();
+    toast.success('Dashboard updated with real-time data!');
   };
 
-  const handleCTFAction = async (ctfId, action) => {
-    try {
-      if (action === 'activate') {
-        await ctfAPI.toggleActivation(ctfId);
-        toast.success('CTF activated successfully');
-      } else if (action === 'deactivate') {
-        await ctfAPI.toggleActivation(ctfId);
-        toast.success('CTF deactivated successfully');
-      } else if (action === 'publish') {
-        await ctfAPI.publishCTF(ctfId);
-        toast.success('CTF published successfully');
-      } else if (action === 'unpublish') {
-        await ctfAPI.unpublishCTF(ctfId);
-        toast.success('CTF unpublished successfully');
-      }
-      fetchDashboardData(); // Refresh to show updated status
-    } catch (error) {
-      toast.error(`Failed to ${action} CTF`);
-    }
+  // Calculate real-time statistics
+  const calculateRealTimeStats = () => {
+    if (!stats && !comprehensiveAnalytics) return null;
+
+    const totalSubmissions = stats?.totalSubmissions || 0;
+    const correctSubmissions = stats?.correctSubmissions || 0;
+    const successRate = totalSubmissions > 0 ? Math.round((correctSubmissions / totalSubmissions) * 100) : 0;
+
+    // Calculate real-time changes from analytics
+    const submissionStats = comprehensiveAnalytics?.submissions;
+    const userStats = comprehensiveAnalytics?.users;
+    
+    return {
+      // User Statistics
+      totalUsers: stats?.totalUsers || 0,
+      activeUsers: stats?.activeUsers || 0,
+      newUsersToday: stats?.newUsersToday || 0,
+      
+      // CTF Statistics
+      totalCTFs: stats?.totalCTFs || 0,
+      publishedCTFs: stats?.publishedCTFs || 0,
+      visibleCTFs: stats?.visibleCTFs || 0,
+      
+      // Submission Statistics
+      totalSubmissions,
+      correctSubmissions,
+      pendingSubmissions: stats?.pendingSubmissions || 0,
+      successRate,
+      
+      // Real-time CTF Status
+      activeCTFs: ctfStatus.active?.count || 0,
+      upcomingCTFs: ctfStatus.upcoming?.count || 0,
+      endedCTFs: ctfStatus.ended?.count || 0,
+      inactiveCTFs: ctfStatus.inactive?.count || 0,
+      
+      // Currently active CTFs (real-time calculation)
+      currentlyRunningCTFs: ctfs.filter(ctf => {
+        const now = new Date();
+        const start = new Date(ctf.schedule?.startDate);
+        const end = new Date(ctf.schedule?.endDate);
+        return ctf.status === 'active' && now >= start && now <= end;
+      }).length
+    };
   };
+
+  const realTimeStats = calculateRealTimeStats();
 
   // Navigation handlers
   const handleUsersClick = () => {
@@ -362,21 +417,6 @@ const Dashboard = () => {
     );
   }
 
-  // Enhanced stats with real-time CTF data
-  const enhancedStats = {
-    totalUsers: stats?.totalUsers || 0,
-    totalSubmissions: stats?.totalSubmissions || 0,
-    correctSubmissions: stats?.correctSubmissions || 0,
-    activeCTFs: ctfStatus.active?.count || 0,
-    upcomingCTFs: ctfStatus.upcoming?.count || 0,
-    endedCTFs: ctfStatus.ended?.count || 0,
-    inactiveCTFs: ctfStatus.inactive?.count || 0,
-    newUsersToday: stats?.newUsersToday || 0,
-    publishedCTFs: stats?.publishedCTFs || 0,
-    activeUsers: stats?.activeUsers || 0,
-    visibleCTFs: stats?.visibleCTFs || 0,
-  };
-
   return (
     <Layout title="Dashboard" subtitle="Real-time overview of your CTF platform">
       {/* Action Bar with Auto-refresh */}
@@ -398,19 +438,24 @@ const Dashboard = () => {
               Auto-refresh (30s)
             </label>
           </div>
-          <Button onClick={refreshData} variant="outline" className="flex items-center space-x-2">
-            <Activity className="h-4 w-4" />
+          <Button 
+            onClick={refreshData} 
+            variant="outline" 
+            className="flex items-center space-x-2"
+            loading={refreshLoading}
+          >
+            <RefreshCw className="h-4 w-4" />
             <span>Refresh Now</span>
           </Button>
         </div>
       </div>
 
-      {/* Enhanced Stats Grid */}
+      {/* Enhanced Stats Grid - All Real Data */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatCard
           title="Total Users"
-          value={enhancedStats.totalUsers}
-          change={12}
+          value={realTimeStats.totalUsers}
+          description={`${realTimeStats.activeUsers} active users`}
           icon={Users}
           color="blue"
           onClick={handleUsersClick}
@@ -418,8 +463,8 @@ const Dashboard = () => {
         />
         <StatCard
           title="Active CTFs"
-          value={enhancedStats.activeCTFs}
-          change={8}
+          value={realTimeStats.activeCTFs}
+          description={`${realTimeStats.currentlyRunningCTFs} currently running`}
           icon={Flag}
           color="green"
           onClick={handleCTFsClick}
@@ -427,8 +472,8 @@ const Dashboard = () => {
         />
         <StatCard
           title="Total Submissions"
-          value={enhancedStats.totalSubmissions}
-          change={15}
+          value={realTimeStats.totalSubmissions}
+          description={`${realTimeStats.correctSubmissions} correct`}
           icon={TrendingUp}
           color="yellow"
           onClick={handleSubmissionsClick}
@@ -436,12 +481,8 @@ const Dashboard = () => {
         />
         <StatCard
           title="Success Rate"
-          value={`${
-            enhancedStats.correctSubmissions && enhancedStats.totalSubmissions 
-              ? Math.round((enhancedStats.correctSubmissions / enhancedStats.totalSubmissions) * 100) 
-              : 0
-          }%`}
-          change={5}
+          value={`${realTimeStats.successRate}%`}
+          description={`Based on ${realTimeStats.totalSubmissions} submissions`}
           icon={CheckCircle}
           color="green"
           onClick={handleAnalyticsClick}
@@ -449,16 +490,16 @@ const Dashboard = () => {
         />
       </div>
 
-      {/* CTF Status Overview */}
+      {/* Real-time CTF Status Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <Card className="border-l-4 border-l-green-500">
           <Card.Content className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-green-800">Active Now</p>
-                <p className="text-2xl font-bold text-green-900">{enhancedStats.activeCTFs}</p>
+                <p className="text-2xl font-bold text-green-900">{realTimeStats.activeCTFs}</p>
                 <p className="text-xs text-green-600">
-                  {ctfs.filter(ctf => ctf.isCurrentlyActive && ctf.status === 'active').length} currently running
+                  {realTimeStats.currentlyRunningCTFs} currently running
                 </p>
               </div>
               <PlayCircle className="h-8 w-8 text-green-500" />
@@ -471,7 +512,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-blue-800">Upcoming</p>
-                <p className="text-2xl font-bold text-blue-900">{enhancedStats.upcomingCTFs}</p>
+                <p className="text-2xl font-bold text-blue-900">{realTimeStats.upcomingCTFs}</p>
                 <p className="text-xs text-blue-600">Scheduled CTFs</p>
               </div>
               <Clock className="h-8 w-8 text-blue-500" />
@@ -484,7 +525,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-800">Ended</p>
-                <p className="text-2xl font-bold text-gray-900">{enhancedStats.endedCTFs}</p>
+                <p className="text-2xl font-bold text-gray-900">{realTimeStats.endedCTFs}</p>
                 <p className="text-xs text-gray-600">Completed CTFs</p>
               </div>
               <AlertCircle className="h-8 w-8 text-gray-500" />
@@ -497,7 +538,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-yellow-800">Inactive</p>
-                <p className="text-2xl font-bold text-yellow-900">{enhancedStats.inactiveCTFs}</p>
+                <p className="text-2xl font-bold text-yellow-900">{realTimeStats.inactiveCTFs}</p>
                 <p className="text-xs text-yellow-600">Paused CTFs</p>
               </div>
               <PauseCircle className="h-8 w-8 text-yellow-500" />
@@ -577,7 +618,7 @@ const Dashboard = () => {
             </Card.Content>
           </Card>
 
-          {/* Enhanced Platform Health */}
+          {/* Enhanced Platform Health - All Real Data */}
           <Card>
             <Card.Header>
               <h3 className="text-lg font-semibold text-gray-900">Platform Health</h3>
@@ -587,31 +628,31 @@ const Dashboard = () => {
                 <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                   <span className="text-sm font-medium text-gray-700">New Users Today</span>
                   <span className="text-lg font-semibold text-primary-600">
-                    {enhancedStats.newUsersToday}
+                    {realTimeStats.newUsersToday}
                   </span>
                 </div>
                 <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                   <span className="text-sm font-medium text-gray-700">Published CTFs</span>
                   <span className="text-lg font-semibold text-green-600">
-                    {enhancedStats.publishedCTFs}
+                    {realTimeStats.publishedCTFs}
                   </span>
                 </div>
                 <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                   <span className="text-sm font-medium text-gray-700">Active Users</span>
                   <span className="text-lg font-semibold text-blue-600">
-                    {enhancedStats.activeUsers}
+                    {realTimeStats.activeUsers}
                   </span>
                 </div>
                 <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                   <span className="text-sm font-medium text-gray-700">Correct Submissions</span>
                   <span className="text-lg font-semibold text-green-600">
-                    {enhancedStats.correctSubmissions}
+                    {realTimeStats.correctSubmissions}
                   </span>
                 </div>
                 <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                  <span className="text-sm font-medium text-gray-700">Visible CTFs</span>
-                  <span className="text-lg font-semibold text-purple-600">
-                    {enhancedStats.visibleCTFs}
+                  <span className="text-sm font-medium text-gray-700">Pending Submissions</span>
+                  <span className="text-lg font-semibold text-yellow-600">
+                    {realTimeStats.pendingSubmissions}
                   </span>
                 </div>
               </div>
