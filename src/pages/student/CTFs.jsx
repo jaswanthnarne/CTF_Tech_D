@@ -4,7 +4,6 @@ import StudentLayout from '../../components/layout/StudentLayout';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import { userCTFAPI } from '../../services/user';
-// this is the lastest commit 
 import { 
   Clock, 
   Users, 
@@ -100,38 +99,26 @@ const CTFs = () => {
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
- // In CTFs.jsx - Fix all time calculations to use IST
+  // Check if current time is within active hours for today
+ // In CTFs.jsx - Replace the status calculation functions
 const isWithinActiveHours = (ctf) => {
   if (!ctf.activeHours || !ctf.activeHours.startTime || !ctf.activeHours.endTime) {
-    return true;
+    return true; // If no active hours specified, consider it always active
   }
 
-  // Convert to IST
-  const now = new Date();
-  const istOffset = 5.5 * 60 * 60 * 1000; // IST is UTC+5:30
-  const istTime = new Date(now.getTime() + istOffset);
+  const now = currentTime;
   
-  const [startHours, startMinutes] = ctf.activeHours.startTime.split(':').map(Number);
-  const [endHours, endMinutes] = ctf.activeHours.endTime.split(':').map(Number);
+  // Convert times to minutes since midnight for comparison
+  const timeToMinutes = (timeStr) => {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
 
-  const currentMinutes = istTime.getUTCHours() * 60 + istTime.getUTCMinutes();
-  const startMinutesTotal = startHours * 60 + startMinutes;
-  const endMinutesTotal = endHours * 60 + endMinutes;
+  const currentMinutes = timeToMinutes(now.toTimeString().slice(0, 8));
+  const startMinutes = timeToMinutes(ctf.activeHours.startTime);
+  const endMinutes = timeToMinutes(ctf.activeHours.endTime);
 
-  console.log('🕒 Frontend IST Time Check:', {
-    currentIST: `${istTime.getUTCHours().toString().padStart(2, '0')}:${istTime.getUTCMinutes().toString().padStart(2, '0')}`,
-    activeHours: `${ctf.activeHours.startTime} - ${ctf.activeHours.endTime}`,
-    currentMinutes,
-    startMinutesTotal,
-    endMinutesTotal
-  });
-
-  // Handle case where active hours cross midnight
-  if (endMinutesTotal < startMinutesTotal) {
-    return currentMinutes >= startMinutesTotal || currentMinutes <= endMinutesTotal;
-  } else {
-    return currentMinutes >= startMinutesTotal && currentMinutes <= endMinutesTotal;
-  }
+  return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
 };
 
 // Real-time status calculation
