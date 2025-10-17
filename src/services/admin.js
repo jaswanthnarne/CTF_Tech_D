@@ -48,16 +48,17 @@ export const ctfAPI = {
   exportCTFParticipants: (ctfId) => api.get(`/admin/export/ctfs/${ctfId}/participants`, { responseType: 'blob' }),
 };
 
-// Analytics - Updated with real endpoints
+// Analytics - Updated with submission analytics endpoints
 export const analyticsAPI = {
   getDashboardStats: () => api.get('/admin/dashboard-stats'),
   getComprehensiveAnalytics: (params) => api.get('/admin/analytics/comprehensive', { params }),
+  getSubmissionAnalytics: (params) => api.get('/admin/analytics/submissions', { params }), // ADD THIS LINE
   updateCTFStatuses: () => api.post('/admin/update-ctf-statuses'),
   getRecentLogins: (params) => api.get('/admin/recent-logins', { params }),
   getRealTimeCTFStats: () => api.get('/admin/analytics/ctf-real-time'),
   getPlatformStats: () => api.get('/admin/analytics/platform-stats'),
   getRecentActivity: (params) => api.get('/admin/analytics/recent-activity', { params }),
-};
+}
 
 // System
 export const systemAPI = {
