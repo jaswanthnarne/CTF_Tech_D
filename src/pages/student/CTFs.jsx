@@ -332,11 +332,11 @@ const CTFs = () => {
       </div>
 
       {/* Debug Info */}
-      <div className="mb-4 p-3 bg-gray-100 rounded text-xs">
+      {/* <div className="mb-4 p-3 bg-gray-100 rounded text-xs">
         <strong>Debug Info:</strong> Loaded {ctfs.length} CTFs, Filtered: {filteredCTFs.length} | 
         Current Time: {currentTime.toLocaleTimeString()} | 
         API Endpoint: /user/ctfs/available
-      </div>
+      </div> */}
 
       {/* CTF Grid */}
       {loading ? (
