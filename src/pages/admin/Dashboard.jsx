@@ -34,24 +34,26 @@ const StatCard = ({ title, value, description, icon: Icon, color = 'blue', onCli
     red: 'text-red-600 bg-red-100',
   };
 
-  const cardClasses = `p-6 ${clickable ? 'cursor-pointer hover:shadow-md transition-shadow duration-200' : ''}`;
+  const cardClasses = `p-4 sm:p-6 min-h-[120px] flex flex-col justify-center ${
+    clickable ? 'cursor-pointer hover:shadow-md transition-all duration-200 transform hover:-translate-y-1' : ''
+  }`;
 
   return (
     <Card className={cardClasses} onClick={onClick}>
       <div className="flex items-center justify-between">
         <div className="flex items-center">
           <div className="flex-shrink-0">
-            <div className={`p-3 rounded-lg ${colors[color]}`}>
-              <Icon className="h-6 w-6" />
+            <div className={`p-2 sm:p-3 rounded-lg ${colors[color]}`}>
+              <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
           </div>
-          <div className="ml-5 w-0 flex-1">
+          <div className="ml-3 sm:ml-4 flex-1 min-w-0">
             <dl>
-              <dt className="text-sm font-medium text-gray-500 truncate">{title}</dt>
+              <dt className="text-xs sm:text-sm font-medium text-gray-500 truncate">{title}</dt>
               <dd>
-                <div className="text-lg font-semibold text-gray-900">{value}</div>
+                <div className="text-lg sm:text-xl font-bold text-gray-900">{value}</div>
                 {description && (
-                  <div className="text-sm text-gray-500 mt-1">
+                  <div className="text-xs sm:text-sm text-gray-500 mt-1 hidden sm:block">
                     {description}
                   </div>
                 )}
@@ -60,9 +62,16 @@ const StatCard = ({ title, value, description, icon: Icon, color = 'blue', onCli
           </div>
         </div>
         {clickable && (
-          <ArrowRight className="h-5 w-5 text-gray-400" />
+          <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 flex-shrink-0" />
         )}
       </div>
+      {description && (
+        <div className="sm:hidden mt-2">
+          <div className="text-xs text-gray-500">
+            {description}
+          </div>
+        </div>
+      )}
     </Card>
   );
 };
@@ -95,28 +104,28 @@ const RecentLoginCard = ({ user, index }) => {
   };
 
   return (
-    <div className="flex items-center space-x-4 p-3 hover:bg-gray-50 rounded-lg transition-colors">
+    <div className="flex items-center space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
       <div className="flex-shrink-0">
-        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-xs sm:text-sm">
           {user?.fullName ? user.fullName.charAt(0).toUpperCase() : 'U'}
         </div>
       </div>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center space-x-2 mb-1">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 mb-1">
           <p className="text-sm font-medium text-gray-900 truncate">
             {user?.fullName || 'Unknown User'}
           </p>
-          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getRoleColor(user?.role)}`}>
+          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getRoleColor(user?.role)} mt-1 sm:mt-0`}>
             {user?.role || 'user'}
           </span>
         </div>
-        <p className="text-sm text-gray-500 truncate">{user?.email || 'No email'}</p>
+        <p className="text-xs sm:text-sm text-gray-500 truncate">{user?.email || 'No email'}</p>
         <p className="text-xs text-gray-400 mt-1">
           Last login: {getTimeAgo(user?.lastLogin)}
         </p>
       </div>
       <div className="flex-shrink-0">
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(user?.isActive)}`}>
+        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(user?.isActive)}`}>
           {user?.isActive ? 'Active' : 'Inactive'}
         </span>
       </div>
@@ -200,17 +209,17 @@ const RecentActivityCard = ({ activity, index }) => {
   };
 
   return (
-    <div className="flex items-center space-x-4 p-3 hover:bg-gray-50 rounded-lg transition-colors">
+    <div className="flex items-center space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
       <div className="flex-shrink-0">
         <div className={`p-2 rounded-full ${getIconColor(activityType, isCorrect)}`}>
           {getActivityIcon(activityType, isCorrect)}
         </div>
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-900">
+        <p className="text-sm font-medium text-gray-900 truncate">
           {getActivityMessage(activity)}
         </p>
-        <p className="text-sm text-gray-500">
+        <p className="text-xs text-gray-500">
           {new Date(activity?.timestamp || activity?.submittedAt || Date.now()).toLocaleString()}
         </p>
         {activity?.points && (
@@ -220,7 +229,7 @@ const RecentActivityCard = ({ activity, index }) => {
         )}
       </div>
       <div className="flex-shrink-0">
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(activityType, isCorrect)}`}>
+        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(activityType, isCorrect)}`}>
           {getActivityStatus(activityType, isCorrect)}
         </span>
       </div>
@@ -327,16 +336,6 @@ const Dashboard = () => {
     }
   };
 
-  const refreshCTFStatus = async () => {
-    try {
-      const response = await ctfAPI.getAllCTFs();
-      const updatedCtfs = response.data.ctfs || [];
-      setCtfs(updatedCtfs);
-    } catch (error) {
-      console.error('Failed to refresh CTF status:', error);
-    }
-  };
-
   const refreshData = async () => {
     setRefreshLoading(true);
     await fetchDashboardData();
@@ -419,246 +418,194 @@ const Dashboard = () => {
 
   return (
     <Layout title="Dashboard" subtitle="Real-time overview of your CTF platform">
-      {/* Action Bar with Auto-refresh */}
-      <div className="mb-6 flex justify-between items-center">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900">Platform Overview</h2>
-          <p className="text-sm text-gray-600">Real-time statistics and activity</p>
-        </div>
-        <div className="flex items-center space-x-3">
-          <div className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              id="autoRefresh"
-              checked={autoRefresh}
-              onChange={(e) => setAutoRefresh(e.target.checked)}
-              className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-            />
-            <label htmlFor="autoRefresh" className="text-sm text-gray-600">
-              Auto-refresh (30s)
-            </label>
+      {/* Header with Refresh Controls */}
+      <div className="mb-6 sm:mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+          <div className="mb-4 sm:mb-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+              Platform Overview
+            </h1>
+            <p className="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">
+              Real-time monitoring and analytics dashboard
+            </p>
           </div>
-          <Button 
-            onClick={refreshData} 
-            variant="outline" 
-            className="flex items-center space-x-2"
-            loading={refreshLoading}
-          >
-            <RefreshCw className="h-4 w-4" />
-            <span>Refresh Now</span>
-          </Button>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
+            <div className="flex items-center space-x-2 bg-gray-100 px-3 py-2 rounded-lg">
+              <input
+                type="checkbox"
+                id="autoRefresh"
+                checked={autoRefresh}
+                onChange={(e) => setAutoRefresh(e.target.checked)}
+                className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              />
+              <label htmlFor="autoRefresh" className="text-xs sm:text-sm text-gray-600">
+                Auto-refresh (30s)
+              </label>
+            </div>
+            <Button 
+              variant="outline" 
+              onClick={refreshData}
+              loading={refreshLoading}
+              className="flex items-center space-x-2 text-xs sm:text-sm px-3 py-2"
+            >
+              <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span>Refresh Data</span>
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* Enhanced Stats Grid - All Real Data */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      {/* Real-time Statistics Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
         <StatCard
           title="Total Users"
           value={realTimeStats.totalUsers}
-          description={`${realTimeStats.activeUsers} active users`}
+          description={`${realTimeStats.activeUsers} active`}
           icon={Users}
           color="blue"
           onClick={handleUsersClick}
-          clickable={true}
+          clickable
         />
         <StatCard
-          title="Active CTFs"
-          value={realTimeStats.activeCTFs}
-          description={`${realTimeStats.currentlyRunningCTFs} currently running`}
+          title="Total CTFs"
+          value={realTimeStats.totalCTFs}
+          description={`${realTimeStats.publishedCTFs} published`}
           icon={Flag}
           color="green"
           onClick={handleCTFsClick}
-          clickable={true}
-        />
-        <StatCard
-          title="Total Submissions"
-          value={realTimeStats.totalSubmissions}
-          description={`${realTimeStats.correctSubmissions} correct`}
-          icon={TrendingUp}
-          color="yellow"
-          onClick={handleSubmissionsClick}
-          clickable={true}
+          clickable
         />
         <StatCard
           title="Success Rate"
           value={`${realTimeStats.successRate}%`}
-          description={`Based on ${realTimeStats.totalSubmissions} submissions`}
-          icon={CheckCircle}
-          color="green"
+          description={`${realTimeStats.correctSubmissions}/${realTimeStats.totalSubmissions}`}
+          icon={TrendingUp}
+          color="yellow"
           onClick={handleAnalyticsClick}
-          clickable={true}
+          clickable
+        />
+        <StatCard
+          title="Active CTFs"
+          value={realTimeStats.currentlyRunningCTFs}
+          description={`${realTimeStats.upcomingCTFs} upcoming`}
+          icon={Activity}
+          color="red"
+          onClick={handleCTFsClick}
+          clickable
         />
       </div>
 
-      {/* Real-time CTF Status Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <Card className="border-l-4 border-l-green-500">
-          <Card.Content className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-green-800">Active Now</p>
-                <p className="text-2xl font-bold text-green-900">{realTimeStats.activeCTFs}</p>
-                <p className="text-xs text-green-600">
-                  {realTimeStats.currentlyRunningCTFs} currently running
-                </p>
+      {/* CTF Status Overview */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
+        <Card className="p-3 sm:p-4 text-center bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+          <div className="text-lg sm:text-xl font-bold text-green-700">{realTimeStats.activeCTFs}</div>
+          <div className="text-xs sm:text-sm text-green-600">Active Now</div>
+        </Card>
+        <Card className="p-3 sm:p-4 text-center bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+          <div className="text-lg sm:text-xl font-bold text-blue-700">{realTimeStats.upcomingCTFs}</div>
+          <div className="text-xs sm:text-sm text-blue-600">Upcoming</div>
+        </Card>
+        <Card className="p-3 sm:p-4 text-center bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200">
+          <div className="text-lg sm:text-xl font-bold text-gray-700">{realTimeStats.endedCTFs}</div>
+          <div className="text-xs sm:text-sm text-gray-600">Ended</div>
+        </Card>
+        <Card className="p-3 sm:p-4 text-center bg-gradient-to-br from-red-50 to-red-100 border-red-200">
+          <div className="text-lg sm:text-xl font-bold text-red-700">{realTimeStats.inactiveCTFs}</div>
+          <div className="text-xs sm:text-sm text-red-600">Inactive</div>
+        </Card>
+      </div>
+
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
+        {/* Recent Logins */}
+        <Card className="h-full">
+          <Card.Header className="pb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-2 sm:space-y-0">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900 flex items-center">
+                <LogIn className="h-5 w-5 mr-2 text-blue-600" />
+                Recent Logins
+              </h3>
+              <div className="flex items-center space-x-2">
+                <span className="text-xs sm:text-sm text-gray-500">
+                  {recentLogins.length} users
+                </span>
+                <Button variant="outline" size="sm" className="text-xs" onClick={handleUsersClick}>
+                  View All
+                </Button>
               </div>
-              <PlayCircle className="h-8 w-8 text-green-500" />
+            </div>
+          </Card.Header>
+          <Card.Content>
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {recentLogins.length > 0 ? (
+                recentLogins.map((user, index) => (
+                  <RecentLoginCard key={user._id || index} user={user} index={index} />
+                ))
+              ) : (
+                <div className="text-center py-6 sm:py-8 text-gray-500">
+                  <UserCheck className="mx-auto h-8 w-8 sm:h-12 sm:w-12 text-gray-400" />
+                  <p className="mt-2 text-sm sm:text-base">No recent logins</p>
+                  <p className="text-xs sm:text-sm mt-1">User login activity will appear here</p>
+                </div>
+              )}
             </div>
           </Card.Content>
         </Card>
 
-        <Card className="border-l-4 border-l-blue-500">
-          <Card.Content className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-blue-800">Upcoming</p>
-                <p className="text-2xl font-bold text-blue-900">{realTimeStats.upcomingCTFs}</p>
-                <p className="text-xs text-blue-600">Scheduled CTFs</p>
+        {/* Recent Activity */}
+        <Card className="h-full">
+          <Card.Header className="pb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-2 sm:space-y-0">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900 flex items-center">
+                <Activity className="h-5 w-5 mr-2 text-green-600" />
+                Recent Activity
+              </h3>
+              <div className="flex items-center space-x-2">
+                <span className="text-xs sm:text-sm text-gray-500">
+                  {recentActivity.length} activities
+                </span>
+                <Button variant="outline" size="sm" className="text-xs" onClick={handleAnalyticsClick}>
+                  View All
+                </Button>
               </div>
-              <Clock className="h-8 w-8 text-blue-500" />
             </div>
-          </Card.Content>
-        </Card>
-
-        <Card className="border-l-4 border-l-gray-500">
-          <Card.Content className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-800">Ended</p>
-                <p className="text-2xl font-bold text-gray-900">{realTimeStats.endedCTFs}</p>
-                <p className="text-xs text-gray-600">Completed CTFs</p>
-              </div>
-              <AlertCircle className="h-8 w-8 text-gray-500" />
-            </div>
-          </Card.Content>
-        </Card>
-
-        <Card className="border-l-4 border-l-yellow-500">
-          <Card.Content className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-yellow-800">Inactive</p>
-                <p className="text-2xl font-bold text-yellow-900">{realTimeStats.inactiveCTFs}</p>
-                <p className="text-xs text-yellow-600">Paused CTFs</p>
-              </div>
-              <PauseCircle className="h-8 w-8 text-yellow-500" />
+          </Card.Header>
+          <Card.Content>
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {recentActivity.length > 0 ? (
+                recentActivity.map((activity, index) => (
+                  <RecentActivityCard key={activity._id || index} activity={activity} index={index} />
+                ))
+              ) : (
+                <div className="text-center py-6 sm:py-8 text-gray-500">
+                  <Clock className="mx-auto h-8 w-8 sm:h-12 sm:w-12 text-gray-400" />
+                  <p className="mt-2 text-sm sm:text-base">No recent activity</p>
+                  <p className="text-xs sm:text-sm mt-1">Platform activity will appear here</p>
+                </div>
+              )}
             </div>
           </Card.Content>
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Enhanced Recent Activity */}
-        <div className="lg:col-span-2">
-          <Card>
-            <Card.Header className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Activity className="h-5 w-5 text-blue-600" />
-                <h3 className="text-lg font-semibold text-gray-900">Real-time Activity</h3>
-              </div>
-              <div className="flex items-center space-x-2">
-                <span className={`h-2 w-2 rounded-full ${autoRefresh ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`}></span>
-                <span className="text-xs text-gray-500">
-                  {autoRefresh ? 'Live' : 'Paused'}
-                </span>
-              </div>
-            </Card.Header>
-            <Card.Content>
-              <div className="space-y-4">
-                {recentActivity.length > 0 ? (
-                  recentActivity.map((activity, index) => (
-                    <RecentActivityCard 
-                      key={activity._id || index} 
-                      activity={activity} 
-                      index={index} 
-                    />
-                  ))
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <Clock className="mx-auto h-12 w-12 text-gray-400" />
-                    <p className="mt-2">No recent activity</p>
-                  </div>
-                )}
-              </div>
-            </Card.Content>
-          </Card>
-        </div>
-
-        {/* Right Sidebar - Recent Logins and Platform Health */}
-        <div className="space-y-8">
-          {/* Recent Login Users */}
-          <Card>
-            <Card.Header className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <UserCheck className="h-5 w-5 text-green-600" />
-                <h3 className="text-lg font-semibold text-gray-900">Recent Logins</h3>
-              </div>
-              <Button 
-                onClick={() => navigate('/admin/users')}
-                variant="ghost" 
-                size="sm"
-                className="text-blue-600 hover:text-blue-700"
-              >
-                View All
-              </Button>
-            </Card.Header>
-            <Card.Content>
-              <div className="space-y-3">
-                {recentLogins.length > 0 ? (
-                  recentLogins.map((user, index) => (
-                    <RecentLoginCard key={user._id || index} user={user} index={index} />
-                  ))
-                ) : (
-                  <div className="text-center py-6 text-gray-500">
-                    <LogIn className="mx-auto h-8 w-8 text-gray-400 mb-2" />
-                    <p className="text-sm">No recent logins</p>
-                  </div>
-                )}
-              </div>
-            </Card.Content>
-          </Card>
-
-          {/* Enhanced Platform Health - All Real Data */}
-          <Card>
-            <Card.Header>
-              <h3 className="text-lg font-semibold text-gray-900">Platform Health</h3>
-            </Card.Header>
-            <Card.Content>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                  <span className="text-sm font-medium text-gray-700">New Users Today</span>
-                  <span className="text-lg font-semibold text-primary-600">
-                    {realTimeStats.newUsersToday}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                  <span className="text-sm font-medium text-gray-700">Published CTFs</span>
-                  <span className="text-lg font-semibold text-green-600">
-                    {realTimeStats.publishedCTFs}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                  <span className="text-sm font-medium text-gray-700">Active Users</span>
-                  <span className="text-lg font-semibold text-blue-600">
-                    {realTimeStats.activeUsers}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                  <span className="text-sm font-medium text-gray-700">Correct Submissions</span>
-                  <span className="text-lg font-semibold text-green-600">
-                    {realTimeStats.correctSubmissions}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                  <span className="text-sm font-medium text-gray-700">Pending Submissions</span>
-                  <span className="text-lg font-semibold text-yellow-600">
-                    {realTimeStats.pendingSubmissions}
-                  </span>
-                </div>
-              </div>
-            </Card.Content>
-          </Card>
-        </div>
+      {/* Quick Actions */}
+      <div className="mt-6 sm:mt-8 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+        <Button variant="outline" onClick={() => navigate('/admin/users')} className="flex flex-col items-center p-4 h-auto">
+          <Users className="h-6 w-6 mb-2 text-blue-600" />
+          <span className="text-xs sm:text-sm font-medium">Manage Users</span>
+        </Button>
+        <Button variant="outline" onClick={() => navigate('/admin/ctfs')} className="flex flex-col items-center p-4 h-auto">
+          <Flag className="h-6 w-6 mb-2 text-green-600" />
+          <span className="text-xs sm:text-sm font-medium">Manage CTFs</span>
+        </Button>
+        <Button variant="outline" onClick={() => navigate('/admin/submissions')} className="flex flex-col items-center p-4 h-auto">
+          <CheckCircle className="h-6 w-6 mb-2 text-yellow-600" />
+          <span className="text-xs sm:text-sm font-medium">Submissions</span>
+        </Button>
+        <Button variant="outline" onClick={() => navigate('/admin/analytics')} className="flex flex-col items-center p-4 h-auto">
+          <TrendingUp className="h-6 w-6 mb-2 text-purple-600" />
+          <span className="text-xs sm:text-sm font-medium">Analytics</span>
+        </Button>
       </div>
     </Layout>
   );

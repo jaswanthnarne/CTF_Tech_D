@@ -27,10 +27,21 @@ const StudentDashboard = () => {
   const [userRanking, setUserRanking] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [autoRefresh, setAutoRefresh] = useState(true);
 
   useEffect(() => {
     fetchDashboardData();
-  }, []);
+    
+    // Set up auto-refresh every 30 seconds
+    let interval;
+    if (autoRefresh) {
+      interval = setInterval(fetchDashboardData, 30000);
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [autoRefresh]);
 
   const fetchDashboardData = async () => {
     try {
@@ -81,25 +92,30 @@ const StudentDashboard = () => {
     };
 
     return (
-      <Card className="p-6 hover:shadow-lg transition-shadow duration-200">
+      <Card className="p-4 sm:p-6 hover:shadow-lg transition-all duration-200 transform hover:-translate-y-1 min-h-[120px] flex flex-col justify-center">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <div className={`p-3 rounded-lg ${colors[color]}`}>
-                <Icon className="h-6 w-6" />
+              <div className={`p-2 sm:p-3 rounded-lg ${colors[color]}`}>
+                <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
               </div>
             </div>
-            <div className="ml-5">
-              <dt className="text-sm font-medium text-gray-500 truncate">{title}</dt>
-              <dd className="text-lg font-semibold text-gray-900">{value}</dd>
+            <div className="ml-3 sm:ml-4">
+              <dt className="text-xs sm:text-sm font-medium text-gray-500 truncate">{title}</dt>
+              <dd className="text-lg sm:text-xl font-bold text-gray-900">{value}</dd>
             </div>
           </div>
           {description && (
-            <div className="text-right">
+            <div className="hidden sm:block text-right">
               <p className="text-xs text-gray-500">{description}</p>
             </div>
           )}
         </div>
+        {description && (
+          <div className="sm:hidden mt-2">
+            <p className="text-xs text-gray-500">{description}</p>
+          </div>
+        )}
       </Card>
     );
   };
@@ -139,42 +155,56 @@ const StudentDashboard = () => {
   return (
     <StudentLayout title="Dashboard" subtitle="Your CTF journey overview">
       {/* Header with Refresh Button */}
-      <div className="mb-8">
+      <div className="mb-6 sm:mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
+          <div className="mb-4 sm:mb-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
               Welcome back, {user?.fullName}!
             </h1>
-            <p className="text-gray-600 mt-2">
+            <p className="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">
               Real-time overview of your CTF progress and active challenges.
             </p>
           </div>
-          <div className="flex items-center space-x-4 mt-4 sm:mt-0">
-            <Button 
-              variant="outline" 
-              onClick={handleRefresh}
-              loading={refreshing}
-              className="flex items-center space-x-2"
-            >
-              <RefreshCw className="h-4 w-4" />
-              <span>Refresh</span>
-            </Button>
-            <Link to="/student/leaderboard">
-              <Button variant="outline" className="flex items-center space-x-2">
-                <BarChart3 className="h-4 w-4" />
-                <span>Leaderboard</span>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
+            <div className="flex items-center space-x-2 bg-gray-100 px-3 py-2 rounded-lg">
+              <input
+                type="checkbox"
+                id="studentAutoRefresh"
+                checked={autoRefresh}
+                onChange={(e) => setAutoRefresh(e.target.checked)}
+                className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              />
+              <label htmlFor="studentAutoRefresh" className="text-xs sm:text-sm text-gray-600">
+                Auto-refresh (30s)
+              </label>
+            </div>
+            <div className="flex space-x-2">
+              <Button 
+                variant="outline" 
+                onClick={handleRefresh}
+                loading={refreshing}
+                className="flex items-center space-x-2 text-xs sm:text-sm px-3 py-2"
+              >
+                <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span>Refresh</span>
               </Button>
-            </Link>
+              <Link to="/student/leaderboard">
+                <Button variant="outline" className="flex items-center space-x-2 text-xs sm:text-sm px-3 py-2">
+                  <BarChart3 className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span>Leaderboard</span>
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Real-time Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
         <StatCard
           title="Total Points"
           value={realTimeStats.totalPoints}
-          description="Lifetime points earned"
+          description="Lifetime points"
           icon={Trophy}
           color="yellow"
         />
@@ -186,7 +216,7 @@ const StudentDashboard = () => {
           color="blue"
         />
         <StatCard
-          title="Challenges Solved"
+          title="Solved"
           value={realTimeStats.challengesSolved}
           description="Successful submissions"
           icon={Target}
@@ -195,7 +225,7 @@ const StudentDashboard = () => {
         <StatCard
           title="Success Rate"
           value={`${realTimeStats.successRate}%`}
-          description="Accuracy percentage"
+          description="Accuracy"
           icon={TrendingUp}
           color="purple"
         />
@@ -203,30 +233,30 @@ const StudentDashboard = () => {
 
       {/* Global Ranking Card */}
       {userRanking && (
-        <Card className="mb-8 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
-          <Card.Content className="p-6">
-            <div className="flex items-center justify-between">
+        <Card className="mb-6 sm:mb-8 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+          <Card.Content className="p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-3 sm:space-y-0">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Global Ranking</h3>
-                <p className="text-gray-600 mt-1">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900">Global Ranking</h3>
+                <p className="text-gray-600 mt-1 text-sm">
                   Competing with {realTimeStats.totalParticipants} participants
                 </p>
               </div>
-              <div className="text-right">
-                <div className="text-3xl font-bold text-blue-600">
+              <div className="text-center sm:text-right">
+                <div className="text-2xl sm:text-3xl font-bold text-blue-600">
                   #{realTimeStats.globalRank}
                 </div>
-                <p className="text-sm text-gray-500 mt-1">Your Position</p>
+                <p className="text-xs sm:text-sm text-gray-500 mt-1">Your Position</p>
               </div>
             </div>
             {userRanking.topUsers && userRanking.topUsers.length > 0 && (
               <div className="mt-4">
                 <p className="text-sm font-medium text-gray-700 mb-2">Top Performers:</p>
-                <div className="flex space-x-2 overflow-x-auto">
+                <div className="flex space-x-2 overflow-x-auto pb-2">
                   {userRanking.topUsers.slice(0, 5).map((user, index) => (
                     <div key={user._id} className="flex items-center space-x-2 bg-white px-3 py-2 rounded-lg border border-gray-200 min-w-0 flex-shrink-0">
                       <span className="text-sm font-medium text-gray-900">#{index + 1}</span>
-                      <span className="text-sm text-gray-600 truncate max-w-24">
+                      <span className="text-sm text-gray-600 truncate max-w-20 sm:max-w-24">
                         {user.user?.fullName || 'Anonymous'}
                       </span>
                       <span className="text-sm font-bold text-yellow-600">
@@ -241,24 +271,26 @@ const StudentDashboard = () => {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
         {/* Active CTFs - Real-time */}
-        <Card>
-          <Card.Header>
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">Active CTFs</h3>
+        <Card className="h-full">
+          <Card.Header className="pb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-2 sm:space-y-0">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900">Active CTFs</h3>
               <div className="flex items-center space-x-2">
-                <span className="text-sm text-gray-500">
+                <span className="text-xs sm:text-sm text-gray-500">
                   {activeCTFs.length} active
                 </span>
                 <Link to="/student/ctfs">
-                  <Button variant="outline" size="sm">View All</Button>
+                  <Button variant="outline" size="sm" className="text-xs">
+                    View All
+                  </Button>
                 </Link>
               </div>
             </div>
           </Card.Header>
           <Card.Content>
-            <div className="space-y-4">
+            <div className="space-y-3">
               {activeCTFs.length > 0 ? (
                 activeCTFs.map((ctf) => {
                   const isCurrentlyActive = () => {
@@ -269,27 +301,27 @@ const StudentDashboard = () => {
                   };
 
                   return (
-                    <div key={ctf._id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2">
-                          <h4 className="font-medium text-gray-900">{ctf.title}</h4>
+                    <div key={ctf._id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                      <div className="flex-1 mb-2 sm:mb-0">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <h4 className="font-medium text-gray-900 text-sm sm:text-base truncate">{ctf.title}</h4>
                           {isCurrentlyActive() && (
-                            <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
+                            <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800 flex-shrink-0">
                               Live
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
+                        <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-gray-500">
                           <span className="flex items-center">
-                            <Clock className="h-4 w-4 mr-1" />
+                            <Clock className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                             {ctf.activeHours?.startTime} - {ctf.activeHours?.endTime}
                           </span>
                           <span className="font-mono text-primary-600">{ctf.points} pts</span>
                           <span className="capitalize">{ctf.difficulty?.toLowerCase()}</span>
                         </div>
                       </div>
-                      <Link to={`/student/ctf/${ctf._id}`}>
-                        <Button size="sm">
+                      <Link to={`/student/ctf/${ctf._id}`} className="self-end sm:self-auto">
+                        <Button size="sm" className="w-full sm:w-auto text-xs">
                           {isCurrentlyActive() ? 'Continue' : 'View'}
                         </Button>
                       </Link>
@@ -297,11 +329,13 @@ const StudentDashboard = () => {
                   );
                 })
               ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <Flag className="mx-auto h-12 w-12 text-gray-400" />
-                  <p className="mt-2">No active CTFs</p>
+                <div className="text-center py-6 sm:py-8 text-gray-500">
+                  <Flag className="mx-auto h-8 w-8 sm:h-12 sm:w-12 text-gray-400" />
+                  <p className="mt-2 text-sm sm:text-base">No active CTFs</p>
                   <Link to="/student/ctfs">
-                    <Button variant="outline" className="mt-4">Browse CTFs</Button>
+                    <Button variant="outline" className="mt-3 text-xs sm:text-sm">
+                      Browse CTFs
+                    </Button>
                   </Link>
                 </div>
               )}
@@ -310,17 +344,17 @@ const StudentDashboard = () => {
         </Card>
 
         {/* Recent Activity - Real-time */}
-        <Card>
-          <Card.Header>
+        <Card className="h-full">
+          <Card.Header className="pb-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">Recent Activity</h3>
-              <span className="text-sm text-gray-500">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900">Recent Activity</h3>
+              <span className="text-xs sm:text-sm text-gray-500">
                 {recentSubmissions.length} submissions
               </span>
             </div>
           </Card.Header>
           <Card.Content>
-            <div className="space-y-4">
+            <div className="space-y-3">
               {recentSubmissions.length > 0 ? (
                 recentSubmissions.map((submission) => {
                   const submissionTime = new Date(submission.submittedAt);
@@ -342,7 +376,7 @@ const StudentDashboard = () => {
                         <p className="text-sm font-medium text-gray-900 truncate">
                           {submission.ctf?.title}
                         </p>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-xs text-gray-500">
                           {timeText}
                         </p>
                       </div>
@@ -359,10 +393,10 @@ const StudentDashboard = () => {
                   );
                 })
               ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <Clock className="mx-auto h-12 w-12 text-gray-400" />
-                  <p className="mt-2">No recent activity</p>
-                  <p className="text-sm mt-1">Join a CTF to get started!</p>
+                <div className="text-center py-6 sm:py-8 text-gray-500">
+                  <Clock className="mx-auto h-8 w-8 sm:h-12 sm:w-12 text-gray-400" />
+                  <p className="mt-2 text-sm sm:text-base">No recent activity</p>
+                  <p className="text-xs sm:text-sm mt-1">Join a CTF to get started!</p>
                 </div>
               )}
             </div>
@@ -371,29 +405,29 @@ const StudentDashboard = () => {
       </div>
 
       {/* Performance Metrics */}
-      <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="p-6 text-center hover:shadow-lg transition-shadow duration-200">
-          <Award className="h-8 w-8 text-yellow-500 mx-auto mb-2" />
-          <div className="text-2xl font-bold text-gray-900">
+      <div className="mt-6 sm:mt-8 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
+        <Card className="p-4 sm:p-6 text-center hover:shadow-lg transition-all duration-200 transform hover:-translate-y-1">
+          <Award className="h-6 w-6 sm:h-8 sm:w-8 text-yellow-500 mx-auto mb-2" />
+          <div className="text-xl sm:text-2xl font-bold text-gray-900">
             {realTimeStats.challengesSolved}
           </div>
-          <div className="text-sm text-gray-500">CTFs Solved</div>
+          <div className="text-xs sm:text-sm text-gray-500">CTFs Solved</div>
         </Card>
 
-        <Card className="p-6 text-center hover:shadow-lg transition-shadow duration-200">
-          <Target className="h-8 w-8 text-green-500 mx-auto mb-2" />
-          <div className="text-2xl font-bold text-gray-900">
+        <Card className="p-4 sm:p-6 text-center hover:shadow-lg transition-all duration-200 transform hover:-translate-y-1">
+          <Target className="h-6 w-6 sm:h-8 sm:w-8 text-green-500 mx-auto mb-2" />
+          <div className="text-xl sm:text-2xl font-bold text-gray-900">
             {realTimeStats.correctSubmissions}
           </div>
-          <div className="text-sm text-gray-500">Correct Submissions</div>
+          <div className="text-xs sm:text-sm text-gray-500">Correct Submissions</div>
         </Card>
 
-        <Card className="p-6 text-center hover:shadow-lg transition-shadow duration-200">
-          <Users className="h-8 w-8 text-blue-500 mx-auto mb-2" />
-          <div className="text-2xl font-bold text-gray-900">
+        <Card className="p-4 sm:p-6 text-center hover:shadow-lg transition-all duration-200 transform hover:-translate-y-1">
+          <Users className="h-6 w-6 sm:h-8 sm:w-8 text-blue-500 mx-auto mb-2" />
+          <div className="text-xl sm:text-2xl font-bold text-gray-900">
             {realTimeStats.successRate}%
           </div>
-          <div className="text-sm text-gray-500">Accuracy Rate</div>
+          <div className="text-xs sm:text-sm text-gray-500">Accuracy Rate</div>
         </Card>
       </div>
     </StudentLayout>
