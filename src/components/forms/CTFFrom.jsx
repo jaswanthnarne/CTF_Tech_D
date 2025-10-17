@@ -52,7 +52,7 @@ const CTFForm = ({ ctf, onSubmit, onCancel, loading }) => {
         activeHours: ctf.activeHours || {
           startTime: '09:00',
           endTime: '18:00',
-          timezone: 'UTC'
+          timezone: 'IST'
         },
         schedule: {
           startDate: ctf.schedule?.startDate ? new Date(ctf.schedule.startDate).toISOString().split('T')[0] : '',
@@ -337,10 +337,9 @@ if (formData.activeHours.startTime && formData.activeHours.endTime) {
               onChange={(e) => handleNestedChange('activeHours', 'timezone', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
+              
+              <option value="IST">IST</option>
               <option value="UTC">UTC</option>
-              <option value="EST">EST</option>
-              <option value="PST">PST</option>
-              <option value="CST">CST</option>
             </select>
           </div>
         </div>
