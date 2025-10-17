@@ -99,21 +99,31 @@ const CTFs = () => {
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
-  // Check if current time is within active hours for today
-// In CTFs.jsx - Update the isWithinActiveHours function
+ // In CTFs.jsx - Fix all time calculations to use IST
 const isWithinActiveHours = (ctf) => {
   if (!ctf.activeHours || !ctf.activeHours.startTime || !ctf.activeHours.endTime) {
     return true;
   }
 
-  const now = currentTime;
+  // Convert to IST
+  const now = new Date();
+  const istOffset = 5.5 * 60 * 60 * 1000; // IST is UTC+5:30
+  const istTime = new Date(now.getTime() + istOffset);
   
   const [startHours, startMinutes] = ctf.activeHours.startTime.split(':').map(Number);
   const [endHours, endMinutes] = ctf.activeHours.endTime.split(':').map(Number);
 
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const currentMinutes = istTime.getUTCHours() * 60 + istTime.getUTCMinutes();
   const startMinutesTotal = startHours * 60 + startMinutes;
   const endMinutesTotal = endHours * 60 + endMinutes;
+
+  console.log('🕒 Frontend IST Time Check:', {
+    currentIST: `${istTime.getUTCHours().toString().padStart(2, '0')}:${istTime.getUTCMinutes().toString().padStart(2, '0')}`,
+    activeHours: `${ctf.activeHours.startTime} - ${ctf.activeHours.endTime}`,
+    currentMinutes,
+    startMinutesTotal,
+    endMinutesTotal
+  });
 
   // Handle case where active hours cross midnight
   if (endMinutesTotal < startMinutesTotal) {

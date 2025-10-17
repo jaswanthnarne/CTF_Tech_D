@@ -4,7 +4,7 @@ import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Table from '../../components/ui/Table';
 import Modal from '../../components/ui/Modal';
-import CTFForm from '../../components/forms/CTFFrom';
+import CTFForm from '../../components/forms/CTFForm';
 import { ctfAPI } from '../../services/admin';
 import { 
   Plus, 
@@ -75,6 +75,7 @@ const CTFManagement = () => {
       console.log('Fetched CTFs:', response.data.ctfs); 
       setCtfs(response.data.ctfs);
     } catch (error) {
+      console.error('Failed to fetch CTFs:', error);
       toast.error('Failed to fetch CTFs');
     } finally {
       setLoading(false);
@@ -85,40 +86,14 @@ const CTFManagement = () => {
     fetchCTFs();
   };
 
-  // Check if current time is within active hours for today
-  const isWithinActiveHours = (ctf) => {
-    if (!ctf.activeHours || !ctf.activeHours.startTime || !ctf.activeHours.endTime) {
-      return true;
-    }
-
-    const now = currentTime;
-    const timeToMinutes = (timeStr) => {
-      const [hours, minutes] = timeStr.split(':').map(Number);
-      return hours * 60 + minutes;
+  // Use backend's calculated status instead of recalculating
+  const getCTFStatus = (ctf) => {
+    // Use backend calculated status and isCurrentlyActive
+    return {
+      status: ctf.status,
+      isCurrentlyActive: ctf.isCurrentlyActive,
+      canSubmit: ctf.canSubmit
     };
-
-    const currentMinutes = timeToMinutes(now.toTimeString().slice(0, 8));
-    const startMinutes = timeToMinutes(ctf.activeHours.startTime);
-    const endMinutes = timeToMinutes(ctf.activeHours.endTime);
-
-    const withinHours = currentMinutes >= startMinutes && currentMinutes <= endMinutes;
-    
-    return withinHours;
-  };
-
-  // Real-time status calculation considering both schedule and active hours
-  const calculateCurrentStatus = (ctf) => {
-    if (!ctf.isVisible || !ctf.isPublished) {
-      return { status: 'inactive', isCurrentlyActive: false };
-    }
-    
-    const withinActiveHours = isWithinActiveHours(ctf);
-    
-    if (withinActiveHours) {
-      return { status: 'active', isCurrentlyActive: true };
-    } else {
-      return { status: 'inactive', isCurrentlyActive: false };
-    }
   };
 
   const handleCreateCTF = async (data) => {
@@ -304,16 +279,16 @@ const CTFManagement = () => {
     setExpandedRows(newExpanded);
   };
 
-  // Enhanced status badge with real-time calculation
+  // Enhanced status badge using backend calculated status
   const getStatusBadge = (ctf) => {
-    const { status, isCurrentlyActive } = calculateCurrentStatus(ctf);
+    const { status, isCurrentlyActive } = getCTFStatus(ctf);
     
     const statusConfig = {
       active: { 
         color: 'bg-green-50 text-green-700 border border-green-200',
-        label: 'Active Now',
+        label: isCurrentlyActive ? 'Active Now' : 'Active (Outside Hours)',
         icon: CheckCircle,
-        iconColor: 'text-green-500',
+        iconColor: isCurrentlyActive ? 'text-green-500' : 'text-yellow-500',
       },
       upcoming: { 
         color: 'bg-blue-50 text-blue-700 border border-blue-200',
@@ -329,7 +304,7 @@ const CTFManagement = () => {
       },
       inactive: { 
         color: 'bg-red-50 text-red-700 border border-red-200',
-        label: !ctf.isVisible ? 'Hidden' : !ctf.isPublished ? 'Draft' : 'Inactive Hours',
+        label: !ctf.isVisible ? 'Hidden' : !ctf.isPublished ? 'Draft' : 'Inactive',
         icon: !ctf.isVisible ? EyeOff : !ctf.isPublished ? FileText : XCircle,
         iconColor: !ctf.isVisible ? 'text-red-500' : !ctf.isPublished ? 'text-yellow-500' : 'text-orange-500',
       },
@@ -348,8 +323,6 @@ const CTFManagement = () => {
 
   // Improved visibility badge
   const getVisibilityBadge = (ctf) => {
-    const { status } = calculateCurrentStatus(ctf);
-    
     if (!ctf.isVisible) {
       return (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
@@ -376,7 +349,7 @@ const CTFManagement = () => {
 
   // Enhanced RealTimeStatusControls component
   const RealTimeStatusControls = ({ ctf, onStatusChange }) => {
-    const { status, isCurrentlyActive } = calculateCurrentStatus(ctf);
+    const { status, isCurrentlyActive } = getCTFStatus(ctf);
     const [loading, setLoading] = useState(false);
 
     const handleForceStatus = async (newStatus) => {
@@ -450,6 +423,9 @@ const CTFManagement = () => {
             <div className="p-3 border-b border-gray-200 bg-gray-50">
               <p className="text-sm font-medium text-gray-700">Status Controls</p>
               <p className="text-xs text-gray-500 mt-1">Current: <span className="font-medium capitalize">{status}</span></p>
+              {status === 'active' && (
+                <p className="text-xs text-gray-500">Currently Active: {isCurrentlyActive ? 'Yes' : 'No'}</p>
+              )}
             </div>
             
             <div className="p-2 space-y-1">
@@ -586,7 +562,7 @@ const CTFManagement = () => {
 
   // Filter CTFs based on search and filters
   const filteredCTFs = ctfs.filter(ctf => {
-    const { status } = calculateCurrentStatus(ctf);
+    const { status } = getCTFStatus(ctf);
     const matchesSearch = ctf.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          ctf.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || status === statusFilter;
@@ -602,19 +578,19 @@ const CTFManagement = () => {
   const stats = {
     total: ctfs.length,
     active: ctfs.filter(ctf => {
-      const { status, isCurrentlyActive } = calculateCurrentStatus(ctf);
+      const { status, isCurrentlyActive } = getCTFStatus(ctf);
       return status === 'active' && isCurrentlyActive;
     }).length,
     upcoming: ctfs.filter(ctf => {
-      const { status } = calculateCurrentStatus(ctf);
+      const { status } = getCTFStatus(ctf);
       return status === 'upcoming';
     }).length,
     ended: ctfs.filter(ctf => {
-      const { status } = calculateCurrentStatus(ctf);
+      const { status } = getCTFStatus(ctf);
       return status === 'ended';
     }).length,
     inactive: ctfs.filter(ctf => {
-      const { status } = calculateCurrentStatus(ctf);
+      const { status } = getCTFStatus(ctf);
       return status === 'inactive';
     }).length,
     published: ctfs.filter(ctf => ctf.isPublished).length,
@@ -1045,7 +1021,7 @@ const CTFManagement = () => {
                                 <div className="space-y-1">
                                   <p><span className="text-gray-600">Start:</span> {new Date(ctf.schedule.startDate).toLocaleString()}</p>
                                   <p><span className="text-gray-600">End:</span> {new Date(ctf.schedule.endDate).toLocaleString()}</p>
-                                  <p><span className="text-gray-600">Active Hours:</span> {ctf.activeHours.startTime} - {ctf.activeHours.endTime}</p>
+                                  <p><span className="text-gray-600">Active Hours:</span> {ctf.activeHours.startTime} - {ctf.activeHours.endTime} IST</p>
                                 </div>
                               </div>
                               <div>
@@ -1319,9 +1295,6 @@ const CTFManagement = () => {
               <Button onClick={closeViewModal} variant="outline" className="border-gray-300">
                 Close
               </Button>
-              {/* <Button onClick={() => openEditModal(viewCTF)} className="bg-blue-600 hover:bg-blue-700">
-                Edit CTF
-              </Button> */}
             </div>
           </div>
         </Modal>

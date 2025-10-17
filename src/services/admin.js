@@ -38,6 +38,10 @@ export const ctfAPI = {
   forceStatus: (ctfId, status) => api.put(`/admin/ctfs/${ctfId}/force-status`, { status }),
   bulkUpdateStatus: (ctfIds, status) => api.post('/admin/ctfs/bulk-status-update', { ctfIds, status }),
   
+  // IST Status Management
+  recalculateStatusesIST: () => api.post('/admin/ctfs/recalculate-statuses-ist'),
+  updateAllStatuses: () => api.post('/admin/update-ctf-statuses'),
+  
   // Analytics and participants
   getCTFParticipants: (id, params) => api.get(`/admin/ctfs/${id}/participants`, { params }),
   getCTFAnalytics: (id) => api.get(`/admin/ctf-analytics/${id}`),
@@ -52,13 +56,12 @@ export const ctfAPI = {
 export const analyticsAPI = {
   getDashboardStats: () => api.get('/admin/dashboard-stats'),
   getComprehensiveAnalytics: (params) => api.get('/admin/analytics/comprehensive', { params }),
-  getSubmissionAnalytics: (params) => api.get('/admin/analytics/submissions', { params }), // ADD THIS LINE
+  getSubmissionAnalytics: (params) => api.get('/admin/analytics/submissions', { params }),
+  getSubmissionStats: (params) => api.get('/admin/submissions/stats', { params }),
   updateCTFStatuses: () => api.post('/admin/update-ctf-statuses'),
   getRecentLogins: (params) => api.get('/admin/recent-logins', { params }),
-  getRealTimeCTFStats: () => api.get('/admin/analytics/ctf-real-time'),
-  getPlatformStats: () => api.get('/admin/analytics/platform-stats'),
   getRecentActivity: (params) => api.get('/admin/analytics/recent-activity', { params }),
-}
+};
 
 // System
 export const systemAPI = {
@@ -73,6 +76,7 @@ export const submissionAdminAPI = {
   getPendingSubmissions: (params) => api.get('/admin/submissions/pending', { params }),
   getAllSubmissions: (params) => api.get('/admin/submissions', { params }),
   getSubmission: (submissionId) => api.get(`/admin/submissions/${submissionId}`),
+  getSubmissionScreenshot: (submissionId) => api.get(`/admin/submissions/${submissionId}/screenshot`),
   getUserSubmissions: (userId, params) => api.get(`/admin/users/${userId}/submissions`, { params }),
   approveSubmission: (submissionId, data) => api.post(`/admin/submissions/${submissionId}/approve`, data),
   rejectSubmission: (submissionId, data) => api.post(`/admin/submissions/${submissionId}/reject`, data),
@@ -80,4 +84,3 @@ export const submissionAdminAPI = {
   exportSubmissions: (ctfId) => api.get(`/admin/export/ctfs/${ctfId}/submissions`, { responseType: 'blob' }),
   exportParticipants: (ctfId) => api.get(`/admin/export/ctfs/${ctfId}/participants`, { responseType: 'blob' }),
 };
-

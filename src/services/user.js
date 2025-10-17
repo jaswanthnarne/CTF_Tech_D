@@ -2,22 +2,25 @@ import api from './api';
 
 // Student CTF endpoints
 export const userCTFAPI = {
-  getAllCTFs: (params) => api.get('/ctf/ctfs', { params }),
-  getCTF: (id) => api.get(`/ctf/ctfs/${id}`),
-  joinCTF: (id) => api.post(`/ctf/ctfs/${id}/join`),
-  submitFlag: (id, data) => api.post(`/ctf/ctfs/${id}/submit`, data),
-  getProgress: (id) => api.get(`/ctf/ctfs/${id}/progress`),
-  checkJoined: (id) => api.get(`/ctf/ctfs/${id}/joined`),
-  getJoinedCTFs: (params) => api.get('/user/ctfs/joined', { params }),
-  getLeaderboard: (id) => api.get(`/ctf/ctfs/${id}/leaderboard`),
-  getGlobalLeaderboard: (params) => api.get('/ctf/leaderboard/global', { params }),
-  // Get user's submission for a specific CTF - FIXED URL
-  getMySubmission: (ctfId) => 
-    api.get(`/ctf/ctfs/${ctfId}/my-submission`),
+  // CTF listing and details
+  getAllCTFs: (params) => api.get('/ctfs', { params }),
+  getCTF: (id) => api.get(`/ctfs/${id}`),
+  getAvailableCTFs: (params) => api.get('/user/ctfs/available', { params }),
   
-  // Get user's submissions
-  getMySubmissions: (params = {}) => 
-    api.get('/user/my-submissions', { params }),
+  // CTF participation
+  joinCTF: (id) => api.post(`/ctfs/${id}/join`),
+  submitFlag: (id, data) => api.post(`/ctfs/${id}/submit`, data),
+  getProgress: (id) => api.get(`/ctfs/${id}/progress`),
+  checkJoined: (id) => api.get(`/ctfs/${id}/joined`),
+  getJoinedCTFs: (params) => api.get('/user/ctfs/joined', { params }),
+  
+  // Leaderboards
+  getLeaderboard: (id) => api.get(`/ctfs/${id}/leaderboard`),
+  getGlobalLeaderboard: (params) => api.get('/leaderboard/global', { params }),
+  
+  // Submissions
+  getMySubmission: (ctfId) => api.get(`/ctfs/${ctfId}/my-submission`),
+  getMySubmissions: (params = {}) => api.get('/user/my-submissions', { params }),
 };
 
 // Student profile and stats

@@ -1,19 +1,19 @@
 import api from './api';
 
 export const submissionAPI = {
-  // Submit with screenshot - FIXED URL
+  // Submit with screenshot - CORRECTED URL
   submitWithScreenshot: (ctfId, formData) => 
-    api.post(`/ctf/ctfs/${ctfId}/submit-with-screenshot`, formData, {
+    api.post(`/ctfs/${ctfId}/submit-with-screenshot`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     }),
 
-  // Edit submission screenshot - FIXED URL
+  // Edit submission screenshot - CORRECTED URL
   editSubmissionScreenshot: (submissionId, formData) =>
-    api.put(`/ctf/submissions/${submissionId}/screenshot`, formData, {
+    api.put(`/submissions/${submissionId}/screenshot`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     }),
 
-  // Get user's submission for a CTF - FIXED URL
+  // Get user's submission for a CTF - CORRECTED URL
   getMySubmission: (ctfId) => 
-    api.get(`/ctf/ctfs/${ctfId}/my-submission`),
+    api.get(`/ctfs/${ctfId}/my-submission`),
 };

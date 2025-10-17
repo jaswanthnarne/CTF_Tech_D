@@ -17,7 +17,7 @@ import {
   XCircle,
   BarChart3,
   Upload,
-  ExternalLink // Add this import
+  ExternalLink
 } from 'lucide-react';
 import Loader from '../../components/ui/Loader';
 import toast from 'react-hot-toast';
@@ -47,7 +47,7 @@ const CTFDetail = () => {
         userCTFAPI.getMySubmissions({ ctfId: id })
       ]);
 
-      console.log('CTF Detail Data:', ctfResponse.data.ctf); // Debug log
+      console.log('CTF Detail Data:', ctfResponse.data.ctf);
       setCtf(ctfResponse.data.ctf);
       setProgress(progressResponse.data.progress);
       setSubmissions(submissionsResponse.data.submissions || []);
@@ -97,83 +97,33 @@ const CTFDetail = () => {
     // Open in new tab
     window.open(url, '_blank', 'noopener,noreferrer');
   };
-  
 
- // In CTFDetail.jsx - Add this useEffect for real-time updates
-const [currentTime, setCurrentTime] = useState(new Date());
+  // Use backend calculated status
+  const getStatusBadge = () => {
+    if (!ctf) return null;
 
-// Update current time every minute for real-time status changes
-useEffect(() => {
-  const timer = setInterval(() => {
-    setCurrentTime(new Date());
-  }, 60000); // Update every minute
-
-  return () => clearInterval(timer);
-}, []);
-
-// Add this function to calculate real-time status
-const calculateCurrentStatus = (ctf) => {
-  const now = currentTime;
-  const startDate = new Date(ctf.schedule.startDate);
-  const endDate = new Date(ctf.schedule.endDate);
-  
-  if (!ctf.isVisible || !ctf.isPublished) {
-    return { status: 'inactive', isCurrentlyActive: false };
-  }
-  
-  if (now < startDate) {
-    return { status: 'upcoming', isCurrentlyActive: false };
-  }
-  
-  if (now > endDate) {
-    return { status: 'ended', isCurrentlyActive: false };
-  }
-  
-  // Check active hours
-  if (ctf.activeHours && ctf.activeHours.startTime && ctf.activeHours.endTime) {
-    const timeToMinutes = (timeStr) => {
-      const [hours, minutes] = timeStr.split(':').map(Number);
-      return hours * 60 + minutes;
+    const statusConfig = {
+      active: { 
+        color: ctf.isCurrentlyActive ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800', 
+        label: ctf.isCurrentlyActive ? 'Active Now' : 'Inactive Hours',
+        icon: ctf.isCurrentlyActive ? CheckCircle : EyeOff
+      },
+      upcoming: { color: 'bg-blue-100 text-blue-800', label: 'Upcoming', icon: Calendar },
+      ended: { color: 'bg-gray-100 text-gray-800', label: 'Ended', icon: XCircle },
+      inactive: { color: 'bg-red-100 text-red-800', label: 'Inactive', icon: EyeOff },
     };
-
-    const currentMinutes = timeToMinutes(now.toTimeString().slice(0, 8));
-    const startMinutes = timeToMinutes(ctf.activeHours.startTime);
-    const endMinutes = timeToMinutes(ctf.activeHours.endTime);
-
-    if (currentMinutes < startMinutes || currentMinutes > endMinutes) {
-      return { status: 'inactive', isCurrentlyActive: false };
-    }
-  }
-  
-  return { status: 'active', isCurrentlyActive: true };
-};
-
-// Update the getStatusBadge function to use real-time calculation
-const getStatusBadge = (status, isCurrentlyActive) => {
-  // Use the calculated status instead of the stored one
-  const realTimeStatus = ctf ? calculateCurrentStatus(ctf) : { status, isCurrentlyActive };
-  
-  const statusConfig = {
-    active: { 
-      color: realTimeStatus.isCurrentlyActive ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800', 
-      label: realTimeStatus.isCurrentlyActive ? 'Active Now' : 'Inactive Hours',
-      icon: realTimeStatus.isCurrentlyActive ? CheckCircle : EyeOff
-    },
-    upcoming: { color: 'bg-blue-100 text-blue-800', label: 'Upcoming', icon: Calendar },
-    ended: { color: 'bg-gray-100 text-gray-800', label: 'Ended', icon: XCircle },
-    inactive: { color: 'bg-red-100 text-red-800', label: 'Inactive', icon: EyeOff },
+    
+    const config = statusConfig[ctf.status] || statusConfig.upcoming;
+    const Icon = config.icon;
+    
+    return (
+      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${config.color}`}>
+        <Icon className="h-4 w-4 mr-1" />
+        {config.label}
+      </span>
+    );
   };
-  
-  const config = statusConfig[realTimeStatus.status] || statusConfig.upcoming;
-  const Icon = config.icon;
-  
-  return (
-    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${config.color}`}>
-      <Icon className="h-4 w-4 mr-1" />
-      {config.label}
-    </span>
-  );
-};
+
   if (loading) {
     return (
       <Layout title="CTF Details" subtitle="Loading challenge...">
@@ -216,7 +166,7 @@ const getStatusBadge = (status, isCurrentlyActive) => {
               <div className="flex-1">
                 <div className="flex items-center space-x-4 mb-4">
                   <h1 className="text-2xl font-bold text-gray-900">{ctf.title}</h1>
-                  {getStatusBadge(ctf.status, ctf.isCurrentlyActive)}
+                  {getStatusBadge()}
                 </div>
                 
                 <p className="text-gray-600 mb-4">{ctf.description}</p>
@@ -234,7 +184,7 @@ const getStatusBadge = (status, isCurrentlyActive) => {
                   </div>
                   <div className="flex items-center text-gray-500">
                     <Clock className="h-4 w-4 mr-2" />
-                    <span>{ctf.activeHours.startTime} - {ctf.activeHours.endTime}</span>
+                    <span>{ctf.activeHours.startTime} - {ctf.activeHours.endTime} IST</span>
                   </div>
                 </div>
               </div>
@@ -347,12 +297,6 @@ const getStatusBadge = (status, isCurrentlyActive) => {
         <Card>
           <Card.Header>
             <h3 className="text-lg font-semibold text-gray-900">Submission History</h3>
-            <Link to={`/student/ctf/${ctf._id}/submit`}>
-  <Button className="flex items-center space-x-2">
-    <Upload className="h-4 w-4" />
-    <span>Submit Solution</span>
-  </Button>
-</Link>
           </Card.Header>
           <Card.Content>
             {submissions.length > 0 ? (
