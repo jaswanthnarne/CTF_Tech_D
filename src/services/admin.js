@@ -79,3 +79,4 @@ export const submissionAdminAPI = {
   exportSubmissions: (ctfId) => api.get(`/admin/export/ctfs/${ctfId}/submissions`, { responseType: 'blob' }),
   exportParticipants: (ctfId) => api.get(`/admin/export/ctfs/${ctfId}/participants`, { responseType: 'blob' }),
 };
+

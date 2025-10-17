@@ -27,23 +27,23 @@ import {
   TrendingUp,
   FileText,
   RefreshCw,
-  Activity
+  Activity,
+  AlertCircle
 } from 'lucide-react';
 import Loader from '../../components/ui/Loader';
 import toast from 'react-hot-toast';
 
 const SubmissionAnalytics = () => {
-  const [stats, setStats] = useState(null);
-  const [realtimeData, setRealtimeData] = useState(null);
+  const [analytics, setAnalytics] = useState(null);
   const [timeRange, setTimeRange] = useState('7d');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [autoRefresh, setAutoRefresh] = useState(false);
 
   useEffect(() => {
     fetchAnalytics();
     
-    // Set up auto-refresh every 30 seconds
+    // Set up auto-refresh every 30 seconds if enabled
     let interval;
     if (autoRefresh) {
       interval = setInterval(fetchAnalytics, 30000);
@@ -58,86 +58,34 @@ const SubmissionAnalytics = () => {
     try {
       setRefreshing(true);
       
-      // Fetch comprehensive submission data
-      const [statsResponse, submissionsResponse, analyticsResponse] = await Promise.all([
-        submissionAdminAPI.getSubmissionStats({ timeRange }),
-        submissionAdminAPI.getAllSubmissions({ 
-          limit: 1000,
-          timeRange 
-        }),
-        analyticsAPI.getComprehensiveAnalytics({ timeRange })
-      ]);
-
-      const submissions = submissionsResponse.data.submissions || [];
-      const analytics = analyticsResponse.data.analytics || {};
-
-      // Calculate real-time submission statistics
-      const currentTime = new Date();
-      const last24Hours = new Date(currentTime.getTime() - (24 * 60 * 60 * 1000));
+      // Use the new submission analytics endpoint
+      const response = await analyticsAPI.getSubmissionAnalytics({ timeRange });
       
-      const recentSubmissions = submissions.filter(sub => 
-        new Date(sub.submittedAt || sub.createdAt) > last24Hours
-      );
-
-      const statusCounts = {
-        approved: 0,
-        pending: 0,
-        rejected: 0
-      };
-
-      submissions.forEach(sub => {
-        const status = sub.submissionStatus || sub.status;
-        if (statusCounts.hasOwnProperty(status)) {
-          statusCounts[status]++;
-        }
-      });
-
-      // Prepare data for charts
-      const statusData = Object.entries(statusCounts).map(([name, value]) => ({
-        name: name.charAt(0).toUpperCase() + name.slice(1),
-        value,
-        count: value
-      }));
-
-      // Daily submission trend (last 7 days)
-      const dailyTrend = [];
-      for (let i = 6; i >= 0; i--) {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        const dateStr = date.toISOString().split('T')[0];
-        
-        const daySubmissions = submissions.filter(sub => {
-          const subDate = new Date(sub.submittedAt || sub.createdAt);
-          return subDate.toISOString().split('T')[0] === dateStr;
-        });
-
-        dailyTrend.push({
-          date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-          submissions: daySubmissions.length,
-          approved: daySubmissions.filter(s => (s.submissionStatus || s.status) === 'approved').length,
-          pending: daySubmissions.filter(s => (s.submissionStatus || s.status) === 'pending').length
-        });
+      if (response.data && response.data.analytics) {
+        setAnalytics(response.data.analytics);
+      } else {
+        throw new Error('Invalid response format');
       }
-
-      setStats({
-        ...statsResponse.data,
-        statusData,
-        dailyTrend,
-        recentSubmissions: recentSubmissions.slice(0, 10),
-        totalStats: {
-          totalSubmissions: submissions.length,
-          approvedSubmissions: statusCounts.approved,
-          pendingSubmissions: statusCounts.pending,
-          rejectedSubmissions: statusCounts.rejected,
-          successRate: submissions.length > 0 ? 
-            Math.round((statusCounts.approved / submissions.length) * 100) : 0
-        }
-      });
-
-      setRealtimeData(analytics);
     } catch (error) {
-      console.error('Failed to fetch analytics:', error);
+      console.error('Failed to fetch submission analytics:', error);
       toast.error('Failed to load submission analytics');
+      
+      // Set safe defaults
+      setAnalytics({
+        totals: {
+          totalSubmissions: 0,
+          approvedSubmissions: 0,
+          pendingSubmissions: 0,
+          rejectedSubmissions: 0,
+          totalPoints: 0,
+          averagePoints: 0
+        },
+        statusDistribution: [],
+        dailyTrend: [],
+        categoryPerformance: [],
+        topUsers: [],
+        recentSubmissions: []
+      });
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -186,14 +134,29 @@ const SubmissionAnalytics = () => {
     );
   };
 
+  // Prepare data for charts
+  const statusData = analytics?.statusDistribution?.map(item => ({
+    name: item._id ? item._id.charAt(0).toUpperCase() + item._id.slice(1) : 'Unknown',
+    value: item.count || 0
+  })) || [];
+
+  const dailyData = analytics?.dailyTrend?.map(day => ({
+    date: day._id,
+    submissions: day.total || 0,
+    approved: day.approved || 0,
+    pending: day.pending || 0,
+    rejected: day.rejected || 0
+  })) || [];
+
   // Chart colors
   const STATUS_COLORS = {
     Approved: '#10B981',
     Pending: '#F59E0B',
-    Rejected: '#EF4444'
+    Rejected: '#EF4444',
+    Unknown: '#6B7280'
   };
 
-  if (loading || !stats) {
+  if (loading) {
     return (
       <Layout title="Submission Analytics" subtitle="Detailed submission insights">
         <div className="flex items-center justify-center h-64">
@@ -203,7 +166,7 @@ const SubmissionAnalytics = () => {
     );
   }
 
-  const { totalStats, statusData = [], dailyTrend = [], recentSubmissions = [] } = stats;
+  const { totals, recentSubmissions = [] } = analytics || {};
 
   return (
     <Layout title="Submission Analytics" subtitle="Real-time submission insights and statistics">
@@ -236,6 +199,7 @@ const SubmissionAnalytics = () => {
             <option value="24h">Last 24 Hours</option>
             <option value="7d">Last 7 Days</option>
             <option value="30d">Last 30 Days</option>
+            <option value="all">All Time</option>
           </select>
           <Button 
             variant="outline"
@@ -261,32 +225,51 @@ const SubmissionAnalytics = () => {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
         <StatCard
           title="Total Submissions"
-          value={totalStats.totalSubmissions}
-          description="All time submissions"
+          value={totals?.totalSubmissions || 0}
+          description="All submissions"
           icon={FileText}
           color="blue"
         />
         <StatCard
           title="Approved"
-          value={totalStats.approvedSubmissions}
+          value={totals?.approvedSubmissions || 0}
           description="Successfully solved"
           icon={CheckCircle}
           color="green"
         />
         <StatCard
           title="Pending"
-          value={totalStats.pendingSubmissions}
+          value={totals?.pendingSubmissions || 0}
           description="Awaiting review"
           icon={Clock}
           color="yellow"
         />
         <StatCard
           title="Rejected"
-          value={totalStats.rejectedSubmissions}
+          value={totals?.rejectedSubmissions || 0}
           description="Incorrect submissions"
           icon={XCircle}
           color="red"
         />
+      </div>
+
+      {/* Additional Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+        <Card className="p-4 sm:p-6 text-center bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+          <TrendingUp className="h-8 w-8 sm:h-10 sm:w-10 text-blue-600 mx-auto mb-2" />
+          <div className="text-xl sm:text-2xl font-bold text-blue-700">
+            {totals?.totalPoints || 0}
+          </div>
+          <div className="text-xs sm:text-sm text-blue-600 font-medium">Total Points Awarded</div>
+        </Card>
+        
+        <Card className="p-4 sm:p-6 text-center bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+          <Activity className="h-8 w-8 sm:h-10 sm:w-10 text-green-600 mx-auto mb-2" />
+          <div className="text-xl sm:text-2xl font-bold text-green-700">
+            {totals?.averagePoints ? Math.round(totals.averagePoints) : 0}
+          </div>
+          <div className="text-xs sm:text-sm text-green-600 font-medium">Average Points</div>
+        </Card>
       </div>
 
       {/* Charts Grid */}
@@ -300,7 +283,7 @@ const SubmissionAnalytics = () => {
                 Submission Status Distribution
               </h3>
               <span className="text-xs sm:text-sm text-gray-500">
-                {totalStats.totalSubmissions} total
+                {totals?.totalSubmissions || 0} total
               </span>
             </div>
           </Card.Header>
@@ -346,7 +329,7 @@ const SubmissionAnalytics = () => {
                   <div className="text-right">
                     <span className="text-sm font-bold text-gray-900">{entry.value}</span>
                     <span className="text-xs text-gray-500 ml-1">
-                      ({Math.round((entry.value / totalStats.totalSubmissions) * 100)}%)
+                      ({Math.round((entry.value / (totals?.totalSubmissions || 1)) * 100)}%)
                     </span>
                   </div>
                 </div>
@@ -371,7 +354,7 @@ const SubmissionAnalytics = () => {
           <Card.Content>
             <div className="h-64 sm:h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={dailyTrend}>
+                <BarChart data={dailyData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="date" />
                   <YAxis />
@@ -396,7 +379,9 @@ const SubmissionAnalytics = () => {
               Recent Submissions
             </h3>
             <span className="text-xs sm:text-sm text-gray-500">
-              Last 24 hours
+              {timeRange === '24h' ? 'Last 24 hours' : 
+               timeRange === '7d' ? 'Last 7 days' : 
+               timeRange === '30d' ? 'Last 30 days' : 'All time'}
             </span>
           </div>
         </Card.Header>
@@ -404,7 +389,7 @@ const SubmissionAnalytics = () => {
           <div className="space-y-3 max-h-96 overflow-y-auto">
             {recentSubmissions.length > 0 ? (
               recentSubmissions.map((submission) => {
-                const submissionTime = new Date(submission.submittedAt || submission.createdAt);
+                const submissionTime = new Date(submission.submittedAt);
                 const now = new Date();
                 const timeDiff = Math.floor((now - submissionTime) / (1000 * 60)); // minutes ago
                 
@@ -414,7 +399,7 @@ const SubmissionAnalytics = () => {
                 else if (timeDiff < 1440) timeText = `${Math.floor(timeDiff / 60)}h ago`;
                 else timeText = submissionTime.toLocaleDateString();
 
-                const status = submission.submissionStatus || submission.status;
+                const status = submission.submissionStatus;
 
                 return (
                   <div key={submission._id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
@@ -447,9 +432,9 @@ const SubmissionAnalytics = () => {
               })
             ) : (
               <div className="text-center py-8 text-gray-500">
-                <FileText className="mx-auto h-8 w-8 sm:h-12 sm:w-12 text-gray-400" />
+                <AlertCircle className="mx-auto h-8 w-8 sm:h-12 sm:w-12 text-gray-400" />
                 <p className="mt-2 text-sm sm:text-base">No recent submissions</p>
-                <p className="text-xs sm:text-sm mt-1">Submissions from the last 24 hours will appear here</p>
+                <p className="text-xs sm:text-sm mt-1">Submissions will appear here as users submit solutions</p>
               </div>
             )}
           </div>
