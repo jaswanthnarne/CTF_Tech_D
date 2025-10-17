@@ -157,6 +157,32 @@ const Analytics = () => {
     );
   };
 
+  // Custom label renderer to prevent overlap
+  const renderCustomizedLabel = ({
+    cx, cy, midAngle, innerRadius, outerRadius, percent, name
+  }) => {
+    if (percent === 0) return null;
+
+    const RADIAN = Math.PI / 180;
+    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+    return (
+      <text 
+        x={x} 
+        y={y} 
+        fill="white" 
+        textAnchor={x > cx ? 'start' : 'end'} 
+        dominantBaseline="central"
+        fontSize={12}
+        fontWeight="bold"
+      >
+        {`${(percent * 100).toFixed(0)}%`}
+      </text>
+    );
+  };
+
   // Pie chart colors
   const CTF_STATUS_COLORS = {
     Active: '#10B981',
@@ -278,49 +304,52 @@ const Analytics = () => {
             </div>
           </Card.Header>
           <Card.Content>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={ctfStatusData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => 
-                      `${name} (${(percent * 100).toFixed(0)}%)`
-                    }
-                    outerRadius={100}
-                    innerRadius={60}
-                    fill="#8884d8"
-                    dataKey="value"
-                    paddingAngle={2}
-                  >
-                    {ctfStatusData.map((entry, index) => (
-                      <Cell 
-                        key={`cell-${index}`} 
-                        fill={CTF_STATUS_COLORS[entry.name] || '#6B7280'} 
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    formatter={(value) => [`${value} CTFs`, 'Count']}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="grid grid-cols-2 gap-3 mt-4">
-              {ctfStatusData.map((entry, index) => (
-                <div key={entry.name} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-2">
-                    <div 
-                      className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: CTF_STATUS_COLORS[entry.name] }}
+            <div className="h-80 flex flex-col">
+              <div className="flex-1 min-h-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={ctfStatusData}
+                      cx="50%"
+                      cy="50%"
+                      label={renderCustomizedLabel}
+                      labelLine={false}
+                      outerRadius={80}
+                      innerRadius={40}
+                      fill="#8884d8"
+                      dataKey="value"
+                      paddingAngle={1}
+                    >
+                      {ctfStatusData.map((entry, index) => (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={CTF_STATUS_COLORS[entry.name] || '#6B7280'} 
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      formatter={(value, name, props) => [
+                        `${value} CTFs`, 
+                        props.payload.name
+                      ]}
                     />
-                    <span className="text-sm font-medium text-gray-700">{entry.name}</span>
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="grid grid-cols-2 gap-2 mt-4">
+                {ctfStatusData.map((entry, index) => (
+                  <div key={entry.name} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                    <div className="flex items-center space-x-2">
+                      <div 
+                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: CTF_STATUS_COLORS[entry.name] }}
+                      />
+                      <span className="text-xs font-medium text-gray-700 truncate">{entry.name}</span>
+                    </div>
+                    <span className="text-xs font-bold text-gray-900 ml-2">{entry.value}</span>
                   </div>
-                  <span className="text-sm font-bold text-gray-900">{entry.value}</span>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </Card.Content>
         </Card>
@@ -339,54 +368,57 @@ const Analytics = () => {
             </div>
           </Card.Header>
           <Card.Content>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={userRoleData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => 
-                      `${name} (${(percent * 100).toFixed(0)}%)`
-                    }
-                    outerRadius={100}
-                    innerRadius={60}
-                    fill="#8884d8"
-                    dataKey="value"
-                    paddingAngle={2}
-                  >
-                    {userRoleData.map((entry, index) => (
-                      <Cell 
-                        key={`cell-${index}`} 
-                        fill={USER_ROLE_COLORS[entry.name] || '#6B7280'} 
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    formatter={(value) => [`${value} Users`, 'Count']}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="space-y-3 mt-4">
-              {userRoleData.map((entry, index) => (
-                <div key={entry.name} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-2">
-                    <div 
-                      className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: USER_ROLE_COLORS[entry.name] }}
+            <div className="h-80 flex flex-col">
+              <div className="flex-1 min-h-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={userRoleData}
+                      cx="50%"
+                      cy="50%"
+                      label={renderCustomizedLabel}
+                      labelLine={false}
+                      outerRadius={80}
+                      innerRadius={40}
+                      fill="#8884d8"
+                      dataKey="value"
+                      paddingAngle={1}
+                    >
+                      {userRoleData.map((entry, index) => (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={USER_ROLE_COLORS[entry.name] || '#6B7280'} 
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      formatter={(value, name, props) => [
+                        `${value} Users`, 
+                        props.payload.name
+                      ]}
                     />
-                    <span className="text-sm font-medium text-gray-700">{entry.name}</span>
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="space-y-2 mt-4">
+                {userRoleData.map((entry, index) => (
+                  <div key={entry.name} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                    <div className="flex items-center space-x-2">
+                      <div 
+                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: USER_ROLE_COLORS[entry.name] }}
+                      />
+                      <span className="text-sm font-medium text-gray-700">{entry.name}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-sm font-bold text-gray-900">{entry.value}</span>
+                      <span className="text-xs text-gray-500 ml-1">
+                        ({Math.round((entry.value / userRoleData.reduce((sum, item) => sum + item.value, 0)) * 100)}%)
+                      </span>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <span className="text-sm font-bold text-gray-900">{entry.value}</span>
-                    <span className="text-xs text-gray-500 ml-1">
-                      ({Math.round((entry.value / userRoleData.reduce((sum, item) => sum + item.value, 0)) * 100)}%)
-                    </span>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </Card.Content>
         </Card>
