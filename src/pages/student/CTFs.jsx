@@ -41,17 +41,26 @@ const CTFs = () => {
     fetchCTFs();
   }, [filter, search, category]);
 
-  const fetchCTFs = async () => {
-    try {
-      setLoading(true);
-      const params = {};
-      if (filter !== 'all') params.status = filter;
-      if (search) params.search = search;
-      if (category !== 'all') params.category = category;
+ const fetchCTFs = async () => {
+  try {
+    setLoading(true);
+    const params = {};
+    if (filter !== 'all') params.status = filter;
+    if (search) params.search = search;
+    if (category !== 'all') params.category = category;
 
-      console.log('📡 Fetching CTFs with params:', params);
-      
-      // Use the correct endpoint
+    console.log('📡 Fetching CTFs with params:', params);
+    
+    // Test if user is authenticated first
+    const token = localStorage.getItem('token');
+    console.log('🔐 Token present:', !!token);
+    
+    if (!token) {
+      toast.error('Please login again');
+      return;
+    }
+
+    try {
       const response = await userCTFAPI.getAvailableCTFs(params);
       console.log('✅ Fetched CTFs:', response.data.ctfs);
       setCtfs(response.data.ctfs || []);
@@ -69,13 +78,32 @@ const CTFs = () => {
         }
       }
       setJoinedCTFs(joined);
-    } catch (error) {
-      console.error('❌ Failed to fetch CTFs:', error);
-      toast.error('Failed to load CTFs');
-    } finally {
-      setLoading(false);
+    } catch (apiError) {
+      console.error('❌ API Error details:', {
+        status: apiError.response?.status,
+        statusText: apiError.response?.statusText,
+        data: apiError.response?.data,
+        url: apiError.config?.url
+      });
+      
+      if (apiError.response?.status === 401) {
+        toast.error('Session expired. Please login again.');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      } else if (apiError.response?.status === 500) {
+        toast.error('Server error. Please try again later.');
+      } else {
+        toast.error('Failed to load CTFs');
+      }
     }
-  };
+  } catch (error) {
+    console.error('❌ Failed to fetch CTFs:', error);
+    toast.error('Network error. Please check your connection.');
+  } finally {
+    setLoading(false);
+  }
+};
 
   // ==========================
   // IST TIME HELPER FUNCTIONS (Frontend)
