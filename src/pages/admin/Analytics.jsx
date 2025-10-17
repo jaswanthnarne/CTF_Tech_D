@@ -14,9 +14,7 @@ import {
   PieChart, 
   Pie, 
   Cell,
-  ResponsiveContainer,
-  LineChart,
-  Line
+  ResponsiveContainer
 } from 'recharts';
 import { 
   Users, 
@@ -140,7 +138,7 @@ const Analytics = () => {
     };
 
     return (
-      <Card className="p-4 sm:p-6 hover:shadow-lg transition-all duration-200 transform hover:-translate-y-1">
+      <Card className="p-4 sm:p-6">
         <div className="flex items-center">
           <div className="flex-shrink-0">
             <div className={`p-3 rounded-lg ${colors[color]}`}>
@@ -233,7 +231,7 @@ const Analytics = () => {
       </div>
 
       {/* Overview Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatCard
           title="Total Users"
           value={users?.total || 0}
@@ -265,22 +263,22 @@ const Analytics = () => {
       </div>
 
       {/* Charts Grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6 lg:gap-8 mb-6 sm:mb-8">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-8">
         {/* CTF Status Distribution */}
         <Card className="h-full">
-          <Card.Header className="pb-3">
+          <Card.Header className="pb-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-base sm:text-lg font-semibold text-gray-900 flex items-center">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
                 <Activity className="h-5 w-5 mr-2 text-blue-600" />
                 CTF Status Distribution
               </h3>
-              <span className="text-xs sm:text-sm text-gray-500">
+              <span className="text-sm text-gray-500">
                 {ctfStatusData.reduce((sum, item) => sum + item.value, 0)} total
               </span>
             </div>
           </Card.Header>
           <Card.Content>
-            <div className="h-64 sm:h-80">
+            <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -291,9 +289,11 @@ const Analytics = () => {
                     label={({ name, percent }) => 
                       `${name} (${(percent * 100).toFixed(0)}%)`
                     }
-                    outerRadius={80}
+                    outerRadius={100}
+                    innerRadius={60}
                     fill="#8884d8"
                     dataKey="value"
+                    paddingAngle={2}
                   >
                     {ctfStatusData.map((entry, index) => (
                       <Cell 
@@ -308,15 +308,17 @@ const Analytics = () => {
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div className="grid grid-cols-2 gap-2 mt-4">
+            <div className="grid grid-cols-2 gap-3 mt-4">
               {ctfStatusData.map((entry, index) => (
-                <div key={entry.name} className="flex items-center space-x-2 p-2 bg-gray-50 rounded">
-                  <div 
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: CTF_STATUS_COLORS[entry.name] }}
-                  />
-                  <span className="text-xs font-medium text-gray-700">{entry.name}</span>
-                  <span className="text-xs text-gray-500 ml-auto">{entry.value}</span>
+                <div key={entry.name} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center space-x-2">
+                    <div 
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: CTF_STATUS_COLORS[entry.name] }}
+                    />
+                    <span className="text-sm font-medium text-gray-700">{entry.name}</span>
+                  </div>
+                  <span className="text-sm font-bold text-gray-900">{entry.value}</span>
                 </div>
               ))}
             </div>
@@ -325,19 +327,19 @@ const Analytics = () => {
 
         {/* User Role Distribution */}
         <Card className="h-full">
-          <Card.Header className="pb-3">
+          <Card.Header className="pb-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-base sm:text-lg font-semibold text-gray-900 flex items-center">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
                 <Users className="h-5 w-5 mr-2 text-green-600" />
                 User Role Distribution
               </h3>
-              <span className="text-xs sm:text-sm text-gray-500">
+              <span className="text-sm text-gray-500">
                 {userRoleData.reduce((sum, item) => sum + item.value, 0)} total
               </span>
             </div>
           </Card.Header>
           <Card.Content>
-            <div className="h-64 sm:h-80">
+            <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -348,9 +350,11 @@ const Analytics = () => {
                     label={({ name, percent }) => 
                       `${name} (${(percent * 100).toFixed(0)}%)`
                     }
-                    outerRadius={80}
+                    outerRadius={100}
+                    innerRadius={60}
                     fill="#8884d8"
                     dataKey="value"
+                    paddingAngle={2}
                   >
                     {userRoleData.map((entry, index) => (
                       <Cell 
@@ -365,9 +369,9 @@ const Analytics = () => {
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div className="space-y-2 mt-4">
+            <div className="space-y-3 mt-4">
               {userRoleData.map((entry, index) => (
-                <div key={entry.name} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                <div key={entry.name} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <div className="flex items-center space-x-2">
                     <div 
                       className="w-3 h-3 rounded-full"
@@ -389,29 +393,29 @@ const Analytics = () => {
       </div>
 
       {/* Real-time Activity Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-        <Card className="p-4 sm:p-6 text-center bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-          <Target className="h-8 w-8 sm:h-10 sm:w-10 text-blue-600 mx-auto mb-2" />
-          <div className="text-xl sm:text-2xl font-bold text-blue-700">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="p-6 text-center bg-blue-50 border-blue-200">
+          <Target className="h-10 w-10 text-blue-600 mx-auto mb-3" />
+          <div className="text-2xl font-bold text-blue-700">
             {realtimeStats?.activeUsers || 0}
           </div>
-          <div className="text-xs sm:text-sm text-blue-600 font-medium">Active Users</div>
+          <div className="text-sm text-blue-600 font-medium mt-1">Active Users</div>
         </Card>
 
-        <Card className="p-4 sm:p-6 text-center bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-          <Award className="h-8 w-8 sm:h-10 sm:w-10 text-green-600 mx-auto mb-2" />
-          <div className="text-xl sm:text-2xl font-bold text-green-700">
+        <Card className="p-6 text-center bg-green-50 border-green-200">
+          <Award className="h-10 w-10 text-green-600 mx-auto mb-3" />
+          <div className="text-2xl font-bold text-green-700">
             {realtimeStats?.newUsersToday || 0}
           </div>
-          <div className="text-xs sm:text-sm text-green-600 font-medium">New Users Today</div>
+          <div className="text-sm text-green-600 font-medium mt-1">New Users Today</div>
         </Card>
 
-        <Card className="p-4 sm:p-6 text-center bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-          <TrendingUp className="h-8 w-8 sm:h-10 sm:w-10 text-purple-600 mx-auto mb-2" />
-          <div className="text-xl sm:text-2xl font-bold text-purple-700">
+        <Card className="p-6 text-center bg-purple-50 border-purple-200">
+          <TrendingUp className="h-10 w-10 text-purple-600 mx-auto mb-3" />
+          <div className="text-2xl font-bold text-purple-700">
             {realtimeStats?.pendingSubmissions || 0}
           </div>
-          <div className="text-xs sm:text-sm text-purple-600 font-medium">Pending Submissions</div>
+          <div className="text-sm text-purple-600 font-medium mt-1">Pending Submissions</div>
         </Card>
       </div>
     </Layout>
