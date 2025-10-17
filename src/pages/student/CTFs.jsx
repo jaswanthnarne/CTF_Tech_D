@@ -42,40 +42,40 @@ const CTFs = () => {
   }, [filter, search, category]);
 
   const fetchCTFs = async () => {
-    try {
-      setLoading(true);
-      const params = {};
-      if (filter !== 'all') params.status = filter;
-      if (search) params.search = search;
-      if (category !== 'all') params.category = category;
+  try {
+    setLoading(true);
+    const params = {};
+    if (filter !== 'all') params.status = filter;
+    if (search) params.search = search;
+    if (category !== 'all') params.category = category;
 
-      console.log('📡 Fetching CTFs with params:', params);
-      
-      // Use the correct endpoint
-      const response = await userCTFAPI.getAllCTFs(params);
-      console.log('✅ Fetched CTFs:', response.data.ctfs);
-      setCtfs(response.data.ctfs || []);
+    console.log('📡 Fetching CTFs with params:', params);
+    
+    // ✅ CORRECT: Use the available CTFs endpoint for students
+    const response = await userCTFAPI.getAvailableCTFs(params);
+    console.log('✅ Fetched CTFs:', response.data.ctfs);
+    setCtfs(response.data.ctfs || []);
 
-      // Fetch joined status for each CTF
-      const joined = new Set();
-      for (const ctf of response.data.ctfs || []) {
-        try {
-          const joinedResponse = await userCTFAPI.checkJoined(ctf._id);
-          if (joinedResponse.data.joined) {
-            joined.add(ctf._id);
-          }
-        } catch (error) {
-          console.error(`Failed to check joined status for CTF ${ctf._id}:`, error);
+    // Fetch joined status for each CTF
+    const joined = new Set();
+    for (const ctf of response.data.ctfs || []) {
+      try {
+        const joinedResponse = await userCTFAPI.checkJoined(ctf._id);
+        if (joinedResponse.data.joined) {
+          joined.add(ctf._id);
         }
+      } catch (error) {
+        console.error(`Failed to check joined status for CTF ${ctf._id}:`, error);
       }
-      setJoinedCTFs(joined);
-    } catch (error) {
-      console.error('❌ Failed to fetch CTFs:', error);
-      toast.error('Failed to load CTFs');
-    } finally {
-      setLoading(false);
     }
-  };
+    setJoinedCTFs(joined);
+  } catch (error) {
+    console.error('❌ Failed to fetch CTFs:', error);
+    toast.error('Failed to load CTFs');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleJoinCTF = async (ctfId) => {
     try {
