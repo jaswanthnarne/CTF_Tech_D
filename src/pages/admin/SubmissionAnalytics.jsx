@@ -55,24 +55,16 @@ const SubmissionAnalytics = () => {
   }, [timeRange, autoRefresh]);
 
   const fetchAnalytics = async () => {
-    try {
-      setRefreshing(true);
-      
-      // Use the new submission analytics endpoint
-      const response = await analyticsAPI.getSubmissionAnalytics({ timeRange });
-      
-      if (response.data && response.data.analytics) {
-        setAnalytics(response.data.analytics);
-      } else {
-        throw new Error('Invalid response format');
-      }
-    } catch (error) {
-      console.error('Failed to fetch submission analytics:', error);
-      toast.error('Failed to load submission analytics');
-      
-      // Set safe defaults
+  try {
+    setRefreshing(true);
+    
+    // Option 1: Use the existing submission stats endpoint
+    const response = await submissionAdminAPI.getSubmissionStats({ timeRange });
+    
+    if (response.data) {
+      // Transform the data to match our expected format
       setAnalytics({
-        totals: {
+        totals: response.data.totals || {
           totalSubmissions: 0,
           approvedSubmissions: 0,
           pendingSubmissions: 0,
@@ -80,17 +72,36 @@ const SubmissionAnalytics = () => {
           totalPoints: 0,
           averagePoints: 0
         },
-        statusDistribution: [],
-        dailyTrend: [],
-        categoryPerformance: [],
-        topUsers: [],
-        recentSubmissions: []
+        statusDistribution: response.data.statusDistribution || [],
+        dailyTrend: response.data.dailyTrends || [],
+        recentSubmissions: [] // We'll need to fetch this separately
       });
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
+    } else {
+      throw new Error('Invalid response format');
     }
-  };
+  } catch (error) {
+    console.error('Failed to fetch submission analytics:', error);
+    toast.error('Failed to load submission analytics');
+    
+    // Set safe defaults
+    setAnalytics({
+      totals: {
+        totalSubmissions: 0,
+        approvedSubmissions: 0,
+        pendingSubmissions: 0,
+        rejectedSubmissions: 0,
+        totalPoints: 0,
+        averagePoints: 0
+      },
+      statusDistribution: [],
+      dailyTrend: [],
+      recentSubmissions: []
+    });
+  } finally {
+    setLoading(false);
+    setRefreshing(false);
+  }
+};
 
   const refreshData = async () => {
     await fetchAnalytics();
